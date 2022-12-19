@@ -3,6 +3,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <nss.h>
+#include <grp.h>
+
+#include <cstddef>
 
 extern "C" enum nss_status _nss_gvagate_setgrent(void);
 extern "C" enum nss_status _nss_gvagate_endgrent(void);

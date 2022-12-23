@@ -5,6 +5,8 @@
 #ifndef LLX_GVA_GATE
 #define LLX_GVA_GATE
 
+#include <variant.hpp>
+
 #define LLX_GVA_GATE_DB "/tmp/llx-gva-gate.db"
 
 namespace lliurex
@@ -18,6 +20,8 @@ namespace lliurex
         void create_db();
         void lock_db();
         void unlock_db();
+
+        edupals::variant::Variant get_groups();
     };
 }
 

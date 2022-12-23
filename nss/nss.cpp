@@ -2,10 +2,19 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "libllxgvagate.hpp"
+
 #include <nss.h>
 #include <grp.h>
+#include <systemd/sd-journal.h>
 
 #include <cstddef>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <cstring>
+#include <mutex>
+#include <chrono>
 
 extern "C" enum nss_status _nss_gvagate_setgrent(void);
 extern "C" enum nss_status _nss_gvagate_endgrent(void);
@@ -81,6 +90,30 @@ static int push_group(lliurex::Group& source, struct group* result, char* buffer
     }
 
     result->gr_mem[n] = 0;
+
+    return 0;
+}
+
+int update_db()
+{
+    Gate gate;
+    Variant groups = gate.get_groups();
+
+    lliurex::groups.clear();
+    for (int n=0;n<groups.count();n++) {
+        lliurex::Group grp;
+
+        grp.name = groups[n]["name"].get_string();
+        grp.gid = (uint64_t)groups[n]["gid"].to_int64();
+
+        Variant members = groups[n]["members"];
+
+        for (int m=0;m<members.count();m++) {
+            grp.members.push_back(members[m].get_string());
+        }
+
+        lliurex::groups.push_back(grp);
+    }
 
     return 0;
 }

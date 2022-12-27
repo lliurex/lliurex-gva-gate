@@ -16,6 +16,11 @@
 #include <mutex>
 #include <chrono>
 
+using namespace edupals;
+using namespace edupals::variant;
+
+using namespace std;
+
 extern "C" enum nss_status _nss_gvagate_setgrent(void);
 extern "C" enum nss_status _nss_gvagate_endgrent(void);
 extern "C" enum nss_status _nss_gvagate_getgrent_r(struct group* result, char* buffer, size_t buflen, int* errnop);
@@ -96,7 +101,7 @@ static int push_group(lliurex::Group& source, struct group* result, char* buffer
 
 int update_db()
 {
-    Gate gate;
+    lliurex::Gate gate;
     Variant groups = gate.get_groups();
 
     lliurex::groups.clear();
@@ -118,27 +123,108 @@ int update_db()
     return 0;
 }
 
+/*!
+    Open database
+*/
 nss_status _nss_gvagate_setgrent(void)
 {
+    std::lock_guard<std::mutex> lock(lliurex::mtx);
 
+    lliurex::index = -1;
+
+    int db_status = update_db();
+    if (db_status == -1) {
+        return NSS_STATUS_UNAVAIL;
+    }
+
+    lliurex::index = 0;
+
+    return NSS_STATUS_SUCCESS;
 }
 
+/*!
+    End database
+*/
 nss_status _nss_gvagate_endgrent(void)
 {
-
+    return NSS_STATUS_SUCCESS;
 }
 
+/*!
+    Read entry
+*/
 nss_status _nss_gvagate_getgrent_r(struct group* result, char* buffer, size_t buflen, int* errnop)
 {
+    std::lock_guard<std::mutex> lock(lliurex::mtx);
 
+    if (lliurex::index == lliurex::groups.size()) {
+        return NSS_STATUS_NOTFOUND;
+    }
+
+    lliurex::Group& grp = lliurex::groups[lliurex::index];
+
+    int status = push_group(grp,result,buffer,buflen);
+    if (status == -1) {
+        *errnop = ERANGE;
+        return NSS_STATUS_TRYAGAIN;
+    }
+
+    lliurex::index++;
+    return NSS_STATUS_SUCCESS;
 }
 
 nss_status _nss_gvagate_getgrgid_r(gid_t gid, struct group* result, char* buffer, size_t buflen, int* errnop)
 {
+    std::lock_guard<std::mutex> lock(lliurex::mtx);
 
+    int db_status = update_db();
+    if (db_status == -1) {
+        *errnop = ENOENT;
+        return NSS_STATUS_UNAVAIL;
+    }
+
+    for (lliurex::Group& grp : lliurex::groups) {
+        if (grp.gid==gid) {
+
+            int status = push_group(grp,result,buffer,buflen);
+            if (status == -1) {
+                *errnop = ERANGE;
+                return NSS_STATUS_TRYAGAIN;
+            }
+
+            return NSS_STATUS_SUCCESS;
+        }
+    }
+
+    // not found
+    *errnop = ENOENT;
+    return NSS_STATUS_NOTFOUND;
 }
 
 nss_status _nss_gvagate_getgrnam_r(const char* name, struct group* result, char *buffer, size_t buflen, int* errnop)
 {
+    std::lock_guard<std::mutex> lock(lliurex::mtx);
 
+    int db_status = update_db();
+    if (db_status == -1) {
+        *errnop = ENOENT;
+        return NSS_STATUS_UNAVAIL;
+    }
+
+    for (lliurex::Group& grp : lliurex::groups) {
+        if (grp.name==std::string(name)) {
+
+            int status = push_group(grp,result,buffer,buflen);
+            if (status == -1) {
+                *errnop = ERANGE;
+                return NSS_STATUS_TRYAGAIN;
+            }
+
+            return NSS_STATUS_SUCCESS;
+        }
+    }
+
+    // not found
+    *errnop = ENOENT;
+    return NSS_STATUS_NOTFOUND;
 }

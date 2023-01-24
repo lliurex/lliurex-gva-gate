@@ -22,7 +22,11 @@ namespace lliurex
         virtual ~Gate();
 
         bool exists_db();
+        edupals::variant::Variant read_db();
+        void write_db(edupals::variant::Variant data);
+
         void create_db();
+        void update_db();
         void lock_db_read();
         void lock_db_write();
         void unlock_db();

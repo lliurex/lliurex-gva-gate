@@ -51,6 +51,48 @@ bool Gate::exists_db()
     return stdfs::exists(dbpath);
 }
 
+Variant Gate::read_db()
+{
+    lock_db_read();
+
+    fseek(dbase,0,SEEK_SET);
+
+    stringstream ss;
+    char buffer[128];
+    size_t len;
+
+    L0:
+    len = fread(buffer,1,128,dbase);
+
+    if (len > 0) {
+        ss.write((const char*)buffer,len);
+        goto L0;
+    }
+
+    unlock_db();
+
+    Variant value = json::load(ss);
+
+    return value;
+}
+
+void Gate::write_db(Variant data)
+{
+    stringstream ss;
+    json::dump(data,ss);
+
+    lock_db_write();
+
+    fseek(dbase,0,SEEK_SET);
+    int status = fwrite(ss.str().c_str(),ss.str().size(),1,dbase);
+
+    if (status == 0) {
+        sd_journal_print(LOG_ERR,"failed to write on DB\n");
+    }
+
+    unlock_db();
+}
+
 void Gate::create_db()
 {
     Variant database = Variant::create_struct();
@@ -76,20 +118,63 @@ void Gate::create_db()
     grp["members"].append("foxtrot");
     database["groups"].append(grp);
 
-    fseek(dbase,0,SEEK_SET);
+    write_db(database);
+}
 
-    stringstream ss;
-    json::dump(database,ss);
+void Gate::update_db()
+{
+    Variant data = read_db();
+    Variant src_groups = data["groups"];
 
-    lock_db_write();
+    // fake info update
+    Variant groups = Variant::create_array(0);
+    Variant grp = Variant::create_struct();
+    grp["name"] = "students";
+    grp["gid"] = 10000;
+    grp["members"] = Variant::create_array(0);
+    grp["members"].append("alu300");
+    grp["members"].append("alu301");
 
-    int status = fwrite(ss.str().c_str(),ss.str().size(),1,dbase);
+    groups.append(grp);
 
-    if (status == 0) {
-        sd_journal_print(LOG_ERR,"failed to write on DB\n");
+    grp = Variant::create_struct();
+    grp["name"] = "admins";
+    grp["gid"] = 10006;
+    grp["members"] = Variant::create_array(0);
+    grp["members"].append("quique");
+
+    groups.append(grp);
+
+    for (int n=0;n<groups.count();n++) {
+        Variant group = groups[n];
+        string name = group["name"];
+        int gid = group["gid"];
+
+        bool match = false;
+
+        for (int m=0;m<src_groups.count();m++) {
+            Variant src_group = src_groups[m];
+
+            string src_name = src_group["name"];
+            int src_gid = src_group["gid"];
+
+            if (gid == src_gid and name == src_name) {
+                clog<<"* match "<<name<<"("<<gid<<")"<<endl;
+                match = true;
+                //TODO
+                break;
+            }
+
+        }
+
+        if (!match) {
+            clog<<"* adding a new group "<<group["name"]<<endl;
+            src_groups.append(group);
+        }
     }
 
-    unlock_db();
+    write_db(data);
+
 }
 
 void Gate::lock_db_read()
@@ -134,25 +219,7 @@ void Gate::unlock_db()
 Variant Gate::get_groups()
 {
 
-    lock_db_read();
-
-    fseek(dbase,0,SEEK_SET);
-
-    stringstream ss;
-    char buffer[128];
-    size_t len;
-
-    L0:
-    len = fread(buffer,1,128,dbase);
-
-    if (len > 0) {
-        ss.write((const char*)buffer,len);
-        goto L0;
-    }
-
-    unlock_db();
-
-    Variant value = json::load(ss);
+    Variant value = read_db();
 
     return value["groups"];
 }

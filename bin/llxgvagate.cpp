@@ -55,5 +55,11 @@ int main(int argc,char* argv[])
         }
     }
 
+    if (cmd == "update") {
+        clog<<"updating database..."<<endl;
+        Gate gate;
+        gate.update_db();
+    }
+
     return 0;
 }

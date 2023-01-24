@@ -7,6 +7,8 @@
 
 #include <variant.hpp>
 
+#include <cstdio>
+
 #define LLX_GVA_GATE_DB "/tmp/llx-gva-gate.db"
 
 namespace lliurex
@@ -16,12 +18,21 @@ namespace lliurex
 
         public:
 
+        Gate();
+        virtual ~Gate();
+
         bool exists_db();
         void create_db();
-        void lock_db();
+        void lock_db_read();
+        void lock_db_write();
         void unlock_db();
 
         edupals::variant::Variant get_groups();
+
+
+        protected:
+
+        FILE* dbase;
     };
 }
 

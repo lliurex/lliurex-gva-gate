@@ -161,7 +161,29 @@ void Gate::update_db()
             if (gid == src_gid and name == src_name) {
                 clog<<"* match "<<name<<"("<<gid<<")"<<endl;
                 match = true;
-                //TODO
+
+                // user look-up
+                Variant members = group["members"];
+                for (int i=0;i<members.count();i++) {
+                    string user = members[i];
+
+                    Variant src_members = src_group["members"];
+
+                    bool user_match = false;
+                    for (int j=0;j<src_members.count();j++) {
+                        string src_user = src_members[j];
+
+                        if (user == src_user) {
+                            user_match = true;
+                            break;
+                        }
+                    }
+
+                    if (!user_match) {
+                        src_members.append(user);
+                    }
+                }
+
                 break;
             }
 

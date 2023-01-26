@@ -61,5 +61,15 @@ int main(int argc,char* argv[])
         gate.update_db();
     }
 
+    if (cmd == "test-read") {
+        Gate gate;
+        gate.test_read();
+    }
+
+    if (cmd == "test-write") {
+        Gate gate;
+        gate.test_write();
+    }
+
     return 0;
 }

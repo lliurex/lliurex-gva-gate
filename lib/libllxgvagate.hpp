@@ -33,6 +33,8 @@ namespace lliurex
 
         edupals::variant::Variant get_groups();
 
+        void test_read();
+        void test_write();
 
         protected:
 

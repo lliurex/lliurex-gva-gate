@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "libllxgvagate.hpp"
+#include "http.hpp"
 
 #include <variant.hpp>
 #include <json.hpp>
@@ -16,6 +17,8 @@
 #include <experimental/filesystem>
 #include <stdexcept>
 #include <sstream>
+#include <chrono>
+#include <thread>
 
 using namespace lliurex;
 using namespace edupals;
@@ -126,24 +129,9 @@ void Gate::update_db()
     Variant data = read_db();
     Variant src_groups = data["groups"];
 
-    // fake info update
-    Variant groups = Variant::create_array(0);
-    Variant grp = Variant::create_struct();
-    grp["name"] = "students";
-    grp["gid"] = 10000;
-    grp["members"] = Variant::create_array(0);
-    grp["members"].append("alu300");
-    grp["members"].append("alu301");
+    HttpClient client("http://127.0.0.1:5000");
 
-    groups.append(grp);
-
-    grp = Variant::create_struct();
-    grp["name"] = "admins";
-    grp["gid"] = 10006;
-    grp["members"] = Variant::create_array(0);
-    grp["members"].append("quique");
-
-    groups.append(grp);
+    Variant groups = client.request("get_groups");
 
     for (int n=0;n<groups.count();n++) {
         Variant group = groups[n];
@@ -244,4 +232,26 @@ Variant Gate::get_groups()
     Variant value = read_db();
 
     return value["groups"];
+}
+
+void Gate::test_read()
+{
+    clog<<"reading...";
+    lock_db_read();
+    clog<<"locked...";
+    std::this_thread::sleep_for(std::chrono::milliseconds(4000));
+    clog<<"read...";
+    unlock_db();
+    clog<<"done"<<endl;
+}
+
+void Gate::test_write()
+{
+    clog<<"writting...";
+    lock_db_write();
+    clog<<"locked...";
+    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+    clog<<"write...";
+    unlock_db();
+    clog<<"done"<<endl;
 }

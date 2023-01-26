@@ -10,7 +10,7 @@
 #include <bson.hpp>
 
 #include <sys/file.h>
-#include <systemd/sd-journal.h>
+#include <unistd.h>
 
 #include <iostream>
 #include <fstream>
@@ -27,12 +27,16 @@ using namespace edupals::variant;
 using namespace std;
 namespace stdfs=std::experimental::filesystem;
 
-Gate::Gate() : dbase(nullptr)
+Gate::Gate() : Gate(nullptr)
 {
-    sd_journal_print(LOG_DEBUG,"Gate constructor\n");
+}
+
+Gate::Gate(function<void(int priority,string message)> cb) : log_cb(cb), dbase(nullptr)
+{
+    log(LOG_DEBUG,"Gate constructor\n");
 
     if (!exists_db()) {
-        sd_journal_print(LOG_DEBUG,"Database does not exists, creating an empty one...\n");
+        log(LOG_DEBUG,"Database does not exists, creating an empty one...\n");
         dbase = fopen(LLX_GVA_GATE_DB,"wb");
         fclose(dbase);
     }
@@ -42,7 +46,7 @@ Gate::Gate() : dbase(nullptr)
 
 Gate::~Gate()
 {
-    sd_journal_print(LOG_DEBUG,"Gate destructor\n");
+    log(LOG_DEBUG,"Gate destructor\n");
 
     fclose(dbase);
 }
@@ -87,10 +91,14 @@ void Gate::write_db(Variant data)
     lock_db_write();
 
     fseek(dbase,0,SEEK_SET);
+    int fd = fileno(dbase);
+    ftruncate(fd,0);
+
     int status = fwrite(ss.str().c_str(),ss.str().size(),1,dbase);
 
     if (status == 0) {
-        sd_journal_print(LOG_ERR,"failed to write on DB\n");
+        //TODO: raise exception here?
+        log(LOG_ERR,"failed to write on DB\n");
     }
 
     unlock_db();
@@ -98,6 +106,7 @@ void Gate::write_db(Variant data)
 
 void Gate::create_db()
 {
+    log(LOG_DEBUG,"Creating an empty database\n");
     Variant database = Variant::create_struct();
 
     database["magic"] = "LLX-GVA-GATE";
@@ -105,7 +114,7 @@ void Gate::create_db()
 
     Variant grp = Variant::create_struct();
     grp["name"] = "students";
-    grp["gid"] = 10000;
+    grp["gid"] = 10003;
     grp["members"] = Variant::create_array(0);
     grp["members"].append("alpha");
     grp["members"].append("bravo");
@@ -114,7 +123,7 @@ void Gate::create_db()
 
     grp = Variant::create_struct();
     grp["name"] = "teachers";
-    grp["gid"] = 10001;
+    grp["gid"] = 10004;
     grp["members"] = Variant::create_array(0);
     grp["members"].append("delta");
     grp["members"].append("echo");
@@ -147,7 +156,7 @@ void Gate::update_db()
             int src_gid = src_group["gid"];
 
             if (gid == src_gid and name == src_name) {
-                clog<<"* match "<<name<<"("<<gid<<")"<<endl;
+                log(LOG_DEBUG,"match "+name+" gid:"+std::to_string(gid));
                 match = true;
 
                 // user look-up
@@ -178,7 +187,7 @@ void Gate::update_db()
         }
 
         if (!match) {
-            clog<<"* adding a new group "<<group["name"]<<endl;
+            log(LOG_INFO,"adding a new group:" + group["name"]);
             src_groups.append(group);
         }
     }
@@ -232,6 +241,18 @@ Variant Gate::get_groups()
     Variant value = read_db();
 
     return value["groups"];
+}
+
+void Gate::set_logger(function<void(int priority,string message)> cb)
+{
+    this->log_cb = cb;
+}
+
+void Gate::log(int priority, string message)
+{
+    if (log_cb) {
+        log_cb(priority,message);
+    }
 }
 
 void Gate::test_read()

@@ -7,7 +7,11 @@
 
 #include <variant.hpp>
 
+#include <syslog.h>
+
 #include <cstdio>
+#include <functional>
+#include <string>
 
 #define LLX_GVA_GATE_DB "/tmp/llx-gva-gate.db"
 
@@ -15,10 +19,11 @@ namespace lliurex
 {
     class Gate
     {
-
         public:
 
         Gate();
+        Gate(std::function<void(int priority,std::string message)> cb);
+
         virtual ~Gate();
 
         bool exists_db();
@@ -36,9 +41,15 @@ namespace lliurex
         void test_read();
         void test_write();
 
+        void set_logger(std::function<void(int priority,std::string message)> cb);
+
         protected:
 
+        void log(int priority, std::string message);
+
         FILE* dbase;
+
+        std::function<void(int priority,std::string message)> log_cb;
     };
 }
 

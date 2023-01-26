@@ -5,6 +5,7 @@
 #include "libllxgvagate.hpp"
 
 #include <variant.hpp>
+#include <console.hpp>
 
 #include <iostream>
 #include <string>
@@ -16,9 +17,26 @@ using namespace edupals::variant;
 
 using namespace std;
 
+bool verbose = false;
+
+void log(int priority,string message)
+{
+    if (priority >= LOG_DEBUG and verbose==false) {
+        return;
+    }
+
+    if (priority <= LOG_ERR) {
+        clog<<console::fg::red<<console::style::bold<<message<<console::reset::all;
+    }
+    else {
+        clog<<message;
+    }
+
+    clog.flush();
+}
+
 int main(int argc,char* argv[])
 {
-    clog<<"LliureX GVA Gate cli tool"<<endl;
 
     string cmd;
 
@@ -27,14 +45,13 @@ int main(int argc,char* argv[])
     }
 
     if (cmd == "create") {
-        Gate gate;
+        Gate gate(log);
 
-        clog<<"database:"<<gate.exists_db()<<endl;
         gate.create_db();
     }
 
     if (cmd == "groups") {
-        Gate gate;
+        Gate gate(log);
         Variant groups = gate.get_groups();
         for (int n=0;n<groups.count();n++) {
             cout<<groups[n]["name"].get_string()<<":"<<groups[n]["gid"]<<":";
@@ -57,17 +74,17 @@ int main(int argc,char* argv[])
 
     if (cmd == "update") {
         clog<<"updating database..."<<endl;
-        Gate gate;
+        Gate gate(log);
         gate.update_db();
     }
 
     if (cmd == "test-read") {
-        Gate gate;
+        Gate gate(log);
         gate.test_read();
     }
 
     if (cmd == "test-write") {
-        Gate gate;
+        Gate gate(log);
         gate.test_write();
     }
 

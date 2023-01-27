@@ -248,6 +248,11 @@ void Gate::set_logger(function<void(int priority,string message)> cb)
     this->log_cb = cb;
 }
 
+bool Gate::login(string user,string password)
+{
+    return false;
+}
+
 void Gate::log(int priority, string message)
 {
     if (log_cb) {

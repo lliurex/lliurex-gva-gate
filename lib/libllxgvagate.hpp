@@ -38,6 +38,8 @@ namespace lliurex
 
         edupals::variant::Variant get_groups();
 
+        bool login(std::string user,std::string password);
+
         void test_read();
         void test_write();
 

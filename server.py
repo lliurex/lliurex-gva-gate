@@ -10,5 +10,9 @@ api = Flask(__name__)
 def get_companies():
   return json.dumps(companies)
 
+@api.route('/login', methods=['GET'])
+def login():
+  return "-- login --"
+
 if __name__ == '__main__':
     api.run()

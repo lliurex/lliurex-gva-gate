@@ -31,7 +31,9 @@ namespace lliurex
         void write_db(edupals::variant::Variant data);
 
         void create_db();
-        void update_db();
+
+        void update_db(edupals::variant::Variant data);
+
         void lock_db_read();
         void lock_db_write();
         void unlock_db();

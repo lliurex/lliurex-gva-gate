@@ -110,7 +110,7 @@ void Gate::create_db()
     Variant database = Variant::create_struct();
 
     database["magic"] = "LLX-GVA-GATE";
-    database["groups"] = Variant::create_array(0);
+    database["group"] = Variant::create_array(0);
 
     Variant grp = Variant::create_struct();
     grp["name"] = "students";
@@ -119,7 +119,7 @@ void Gate::create_db()
     grp["members"].append("alpha");
     grp["members"].append("bravo");
     grp["members"].append("charlie");
-    database["groups"].append(grp);
+    database["group"].append(grp);
 
     grp = Variant::create_struct();
     grp["name"] = "teachers";
@@ -128,19 +128,17 @@ void Gate::create_db()
     grp["members"].append("delta");
     grp["members"].append("echo");
     grp["members"].append("foxtrot");
-    database["groups"].append(grp);
+    database["group"].append(grp);
 
     write_db(database);
 }
 
-void Gate::update_db()
+void Gate::update_db(Variant data)
 {
-    Variant data = read_db();
-    Variant src_groups = data["groups"];
+    Variant src_data = read_db();
+    Variant src_groups = src_data["group"];
 
-    HttpClient client("http://127.0.0.1:5000");
-
-    Variant groups = client.request("get_groups");
+    Variant groups = data;
 
     for (int n=0;n<groups.count();n++) {
         Variant group = groups[n];
@@ -192,7 +190,7 @@ void Gate::update_db()
         }
     }
 
-    write_db(data);
+    write_db(src_data);
 
 }
 
@@ -240,7 +238,7 @@ Variant Gate::get_groups()
 
     Variant value = read_db();
 
-    return value["groups"];
+    return value["group"];
 }
 
 void Gate::set_logger(function<void(int priority,string message)> cb)
@@ -250,7 +248,23 @@ void Gate::set_logger(function<void(int priority,string message)> cb)
 
 bool Gate::login(string user,string password)
 {
-    return false;
+    HttpClient client("http://127.0.0.1:5000");
+
+    stringstream ss;
+    ss<<"login?user="<<user<<"&password="<<password;
+    Variant response = client.request(ss.str());
+
+    stringstream out;
+    out<<response<<"\n";
+    log(LOG_INFO,out.str());
+
+    bool success = response["success"];
+
+    if (success) {
+        update_db(response["group"]);
+    }
+
+    return success;
 }
 
 void Gate::log(int priority, string message)

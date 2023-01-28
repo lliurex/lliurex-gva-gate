@@ -14,12 +14,22 @@
 #include <string>
 
 #define LLX_GVA_GATE_DB "/tmp/llx-gva-gate.db"
+#define LLX_GVA_GATE_MAGIC  "LLX-GVA-GATE"
 
 namespace lliurex
 {
+    enum class Validator {
+        Database,
+        Group,
+        Groups,
+        Members,
+        Login
+    };
+
     class Gate
     {
         public:
+
 
         Gate();
         Gate(std::function<void(int priority,std::string message)> cb);
@@ -41,6 +51,8 @@ namespace lliurex
         edupals::variant::Variant get_groups();
 
         bool login(std::string user,std::string password);
+
+        bool validate(edupals::variant::Variant data,Validator validator);
 
         void test_read();
         void test_write();

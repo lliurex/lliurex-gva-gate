@@ -109,7 +109,7 @@ void Gate::create_db()
     log(LOG_DEBUG,"Creating an empty database\n");
     Variant database = Variant::create_struct();
 
-    database["magic"] = "LLX-GVA-GATE";
+    database["magic"] = LLX_GVA_GATE_MAGIC;
     database["group"] = Variant::create_array(0);
 
     Variant grp = Variant::create_struct();
@@ -271,6 +271,96 @@ void Gate::log(int priority, string message)
 {
     if (log_cb) {
         log_cb(priority,message);
+    }
+}
+
+bool Gate::validate(Variant data,Validator validator)
+{
+    switch (validator) {
+        case Validator::Members:
+            if (!data.is_array()) {
+                return false;
+            }
+
+            for (size_t n=0;n<data.count();n++) {
+                if (!data[n].is_string()) {
+                    return false;
+                }
+            }
+
+            return true;
+        break;
+
+        case Validator::Groups:
+            if (!data.is_array()) {
+                return false;
+            }
+
+            for (size_t n=0;n<data.count();n++) {
+                bool value = validate(data[n],Validator::Group);
+                if (!value) {
+                    return false;
+                }
+            }
+
+            return true;
+
+        break;
+
+        case Validator::Group:
+            if (!data.is_struct()) {
+                return false;
+            }
+
+            if (!data["gid"].is_int32()) {
+                return false;
+            }
+
+            if (!data["name"].is_string()) {
+                return false;
+            }
+
+            return validate(data["members"],Validator::Members);
+        break;
+
+        case Validator::Database:
+            if (!data.is_struct()) {
+                return false;
+            }
+
+            if (!data["magic"].is_string()) {
+                return false;
+            }
+
+            if (data["magic"].get_string()!=LLX_GVA_GATE_MAGIC) {
+                return false;
+            }
+
+            return validate(data["group"],Validator::Groups);
+        break;
+
+        case Validator::Login:
+            if (!data.is_struct()) {
+                return false;
+            }
+
+            if (!data["user"].is_string()) {
+                return false;
+            }
+
+            if (!data["success"].is_boolean()) {
+                return false;
+            }
+
+            if (data["success"].get_boolean() == false) {
+                return true;
+            }
+
+            return validate(data["group"],Validator::Groups);
+        break;
+
+        default:
+            return false;
     }
 }
 

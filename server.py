@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from flask import Flask, json, request
+from flask import Flask, json, request, Response
 
 group = [{"gid": 10003, "name": "students", "members": ["jaume","alu01","alu02"]}, {"gid": 10004, "name": "teachers","members":["quique"]}]
 
@@ -21,6 +21,18 @@ def login():
   if (success):
       data["group"] = group
   return json.dumps(data)
+
+@api.route('/', methods=['POST'])
+def autenticate():
+    data = {"user": request.form.get("user"), "groups":[group]}
+    try:
+        status = passwd[request.form.get("user")] == request.form.get("passwd")
+    except:
+        status = False
+    if status: 
+        return json.dumps(data)
+    else:
+        return Response(response="Unauthorized",status=401) 
 
 if __name__ == '__main__':
     api.run()

@@ -8,21 +8,43 @@
 #include <variant.hpp>
 
 #include <ostream>
+#include <sstream>
 #include <string>
+#include <map>
+#include <cstdint>
 
 namespace lliurex
 {
-    class HttpClient
+    namespace http
     {
-        public:
+        class Response
+        {
+            public:
 
-        HttpClient(std::string url);
+            uint64_t status;
+            std::stringstream content;
 
-        edupals::variant::Variant request(std::string what);
+            //Response(uint64_t status,std::stringstream content);
+            edupals::variant::Variant parse();
 
-        std::string server;
-    };
+        };
 
+        class Client
+        {
+            protected:
+
+            std::string server;
+
+            public:
+
+            Client(std::string url);
+
+            Response get(std::string what);
+            Response post(std::string what,std::map<std::string,std::string> fields);
+
+
+        };
+    }
 
 }
 

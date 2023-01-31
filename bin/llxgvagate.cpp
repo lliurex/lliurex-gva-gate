@@ -77,7 +77,7 @@ int main(int argc,char* argv[])
 
     if (cmd == "login" and argc>3) {
         Gate gate(log);
-        gate.login(argv[2],argv[3]);
+        gate.authenticate(argv[2],argv[3]);
     }
 
     if (cmd == "test-read") {

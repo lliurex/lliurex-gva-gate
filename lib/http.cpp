@@ -9,78 +9,141 @@
 #include <curl/curl.h>
 
 #include <exception>
-#include <sstream>
+
 #include <iostream>
 
-using namespace lliurex;
+using namespace lliurex::http;
 
 using namespace edupals;
 using namespace edupals::variant;
 
 using namespace std;
 
-HttpClient::HttpClient(string url) : server(url)
-{
-    
-}
-
 size_t response_cb(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
     stringstream* in=static_cast<stringstream*>(userdata);
-    
+
     for (size_t n=0;n<nmemb;n++) {
         in->put(ptr[n]);
     }
-    
+
     return nmemb;
 }
 
-Variant HttpClient::request(string what)
+struct Curl
 {
-    Variant ret;
-    stringstream input;
-    
-    CURL* curl = nullptr;
-    struct curl_slist* headers = nullptr;
-    CURLcode status;
-    
+    CURL* curl;
+    struct curl_slist* headers;
+};
+
+static Curl prepare_request(string url, Response& response)
+{
+    Curl handler {0};
+
     curl_global_init(CURL_GLOBAL_ALL);
-    
-    curl = curl_easy_init();
-    
-    if (!curl) {
+
+    handler.curl = curl_easy_init();
+
+    if (!handler.curl) {
         throw runtime_error("Failed to initialize curl");
     }
-    
-    string address = server+"/"+what;
-    
-    headers = curl_slist_append(headers, "User-Agent: NSS-HTTP");
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_URL, address.c_str());
-    
-    /* two seconds timeout */
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 2L);
-    
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA,&input);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,response_cb);
-    
-    status = curl_easy_perform(curl);
 
-    if (status != 0) {
-        throw runtime_error("curl_easy_perform("+std::to_string(status)+")");
-    }
-    
-    // free curl resources
-    curl_easy_cleanup(curl);
-    curl_slist_free_all(headers);
+    handler.headers = curl_slist_append(handler.headers, "User-Agent: GVA-GATE");
+    curl_easy_setopt(handler.curl, CURLOPT_HTTPHEADER, handler.headers);
+    curl_easy_setopt(handler.curl, CURLOPT_URL, url.c_str());
+
+    curl_easy_setopt(handler.curl, CURLOPT_TIMEOUT, 2L);
+
+    curl_easy_setopt(handler.curl, CURLOPT_WRITEDATA,&response.content);
+    curl_easy_setopt(handler.curl, CURLOPT_WRITEFUNCTION,response_cb);
+
+    return handler;
+}
+
+static void free_request(Curl handler)
+{
+    curl_easy_cleanup(handler.curl);
+    curl_slist_free_all(handler.headers);
     curl_global_cleanup();
-    
+}
+/*
+Reponse::Response(uint64_t status,stringstream content) : status(status), content(content)
+{
+}
+*/
+Variant Response::parse()
+{
+    Variant ret;
+
     try {
-        ret = json::load(input);
+        ret = json::load(content);
     }
     catch (std::exception& e) {
         throw runtime_error(e.what());
     }
-    
+
     return ret;
 }
+
+Client::Client(string url) : server(url)
+{
+    
+}
+
+Response Client::get(string what)
+{
+    Response response;
+
+    Curl handler = prepare_request(server+"/"+what,response);
+
+    CURLcode status = curl_easy_perform(handler.curl);
+
+    if (status != 0) {
+        throw runtime_error("Client::get::curl_easy_perform("+std::to_string(status)+")");
+    }
+
+    curl_easy_getinfo(handler.curl, CURLINFO_RESPONSE_CODE, &response.status);
+
+    free_request(handler);
+
+    return response;
+}
+
+Response Client::post(string what,map<string,string> fields)
+{
+    Response response;
+
+    Curl handler = prepare_request(server+"/"+what,response);
+
+    stringstream postfields;
+
+    postfields<<"?";
+
+    auto it = fields.begin();
+    bool more = false;
+
+    while (it!=fields.end()) {
+        if (more) {
+            postfields<<"&";
+        }
+        postfields<<it->first<<"="<<it->second;
+        it++;
+        more=true;
+    }
+
+    curl_easy_setopt(handler.curl, CURLOPT_POSTFIELDSIZE, postfields.str().size());
+    curl_easy_setopt(handler.curl, CURLOPT_POSTFIELDS, postfields.str().c_str());
+
+    CURLcode status = curl_easy_perform(handler.curl);
+
+    if (status != 0) {
+        throw runtime_error("Client::post::curl_easy_perform("+std::to_string(status)+")");
+    }
+
+    curl_easy_getinfo(handler.curl, CURLINFO_RESPONSE_CODE, &response.status);
+
+    free_request(handler);
+
+    return response;
+}
+

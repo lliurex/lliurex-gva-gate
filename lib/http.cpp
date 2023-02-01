@@ -66,11 +66,7 @@ static void free_request(Curl handler)
     curl_slist_free_all(handler.headers);
     curl_global_cleanup();
 }
-/*
-Reponse::Response(uint64_t status,stringstream content) : status(status), content(content)
-{
-}
-*/
+
 Variant Response::parse()
 {
     Variant ret;
@@ -117,8 +113,6 @@ Response Client::post(string what,map<string,string> fields)
 
     stringstream postfields;
 
-    postfields<<"?";
-
     auto it = fields.begin();
     bool more = false;
 
@@ -131,8 +125,9 @@ Response Client::post(string what,map<string,string> fields)
         more=true;
     }
 
-    curl_easy_setopt(handler.curl, CURLOPT_POSTFIELDSIZE, postfields.str().size());
-    curl_easy_setopt(handler.curl, CURLOPT_POSTFIELDS, postfields.str().c_str());
+    string pdata = postfields.str();
+
+    curl_easy_setopt(handler.curl, CURLOPT_POSTFIELDS, pdata.c_str());
 
     CURLcode status = curl_easy_perform(handler.curl);
 
@@ -146,4 +141,3 @@ Response Client::post(string what,map<string,string> fields)
 
     return response;
 }
-

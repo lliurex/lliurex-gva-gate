@@ -257,6 +257,11 @@ bool Gate::authenticate(string user,string password)
     clog<<response.status<<endl;
     clog<<response.content.str()<<endl;
 
+    if (response.status==200) {
+        Variant data = response.parse();
+        clog<<data<<endl;
+    }
+
     return true;
 }
 

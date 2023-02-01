@@ -1,12 +1,13 @@
 #!/usr/bin/python3
 
+from datetime import date
 from flask import Flask, json, request, Response
 
 group = [{"gid": 10003, "name": "students", "members": ["jaume","alu01","alu02"]}, {"gid": 10004, "name": "teachers","members":["quique"]}]
 
 passwd = {"alu01" : "alu01secret"}
 
-ldap_information = {"alu01":{"password":"alu01secret", "groups":{"teachers":10003,"GRP_03000394":288412920,"Domain Users":288400513,"DenegarPermisosListadoAD":74373983,"Docente":288412920},"uid":288430185,"name":"Alumno","surname":"Estudiante","home":"/home/alu01"}}
+ldap_information = {"alu01":{"password":"alu01secret","gid":{"Domain Users":288400513}, "groups":{"teachers":10003,"GRP_03000394":288412920,"DenegarPermisosListadoAD":74373983,"Docente":288412920},"uid":288430185,"name":"Alumno","surname":"Estudiante","home":"/home/alu01"}}
 
 api = Flask(__name__)
 
@@ -33,10 +34,12 @@ def autenticate():
                 {
                     "login":login_name,
                     "uid":ldap_information[login_name]["uid"],
-                    "gid":288400513,
+                    "gid":{"Domain Users": 288400513},
                     "name":ldap_information[login_name]["name"],
                     "surname": ldap_information[login_name]["surname"],
-                    "home": ldap_information[login_name]["home"]
+                    "home": ldap_information[login_name]["home"],
+                    "shell":"/bin/bash",
+                    "password_expire": ""
                 },
                 "groups": ldap_information[login_name]["groups"],
                 "machine-token": "a6d1abf7fcf04d5827db9b193a91254f915cba503a6f7f9c02a2bca05f2c8027"

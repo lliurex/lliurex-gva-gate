@@ -50,7 +50,7 @@ namespace lliurex
 
         edupals::variant::Variant get_groups();
 
-        bool login(std::string user,std::string password);
+        bool authenticate(std::string user,std::string password);
 
         bool validate(edupals::variant::Variant data,Validator validator);
 

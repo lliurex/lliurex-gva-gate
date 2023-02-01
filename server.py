@@ -25,11 +25,13 @@ def login():
       data["group"] = group
   return json.dumps(data)
 
-@api.route('/', methods=['POST'])
-def autenticate():
+@api.route('/authenticate', methods=['POST'])
+def authenticate():
     login_name = request.form.get("user")
+    print(passwd[login_name])
     try:
         status = passwd[login_name] == request.form.get("passwd")
+        print(status)
         data = {"user":
                 {
                     "login":login_name,

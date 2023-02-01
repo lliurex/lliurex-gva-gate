@@ -246,25 +246,18 @@ void Gate::set_logger(function<void(int priority,string message)> cb)
     this->log_cb = cb;
 }
 
-bool Gate::login(string user,string password)
+bool Gate::authenticate(string user,string password)
 {
-    HttpClient client("http://127.0.0.1:5000");
+    http::Client client("http://127.0.0.1:5000");
 
-    stringstream ss;
-    ss<<"login?user="<<user<<"&password="<<password;
-    Variant response = client.request(ss.str());
+    http::Response response;
 
-    stringstream out;
-    out<<response<<"\n";
-    log(LOG_INFO,out.str());
+    response = client.post("authenticate",{ {"user",user},{"passwd",password}});
 
-    bool success = response["success"];
+    clog<<response.status<<endl;
+    clog<<response.content.str()<<endl;
 
-    if (success) {
-        update_db(response["group"]);
-    }
-
-    return success;
+    return true;
 }
 
 void Gate::log(int priority, string message)

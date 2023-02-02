@@ -22,10 +22,8 @@ namespace lliurex
         Database,
         Users,
         User,
-        Group,
         Groups,
-        Members,
-        Login
+        Authenticate
     };
 
     class Gate

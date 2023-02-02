@@ -121,70 +121,41 @@ string Gate::machine_token()
 {
     Variant database = read_db();
 
-    //validate here
+    if (!validate(database,Validator::Database)) {
+        log(LOG_ERR,"Bad database\n");
+        return "";
+    }
 
     return database["machine-token"].get_string();
 }
 
 void Gate::update_db(Variant data)
 {
-    Variant src_data = read_db();
-    Variant src_groups = src_data["group"];
+    Variant database = read_db();
 
-    Variant groups = data;
+    if (!validate(database,Validator::Database)) {
+        log(LOG_ERR,"Bad database\n");
+        return;
+    }
 
-    for (int n=0;n<groups.count();n++) {
-        Variant group = groups[n];
-        string name = group["name"];
-        int gid = group["gid"];
+    string login = data["user"]["login"].get_string();
+    int32_t uid = data["user"]["uid"].get_int32();
 
-        bool match = false;
+    Variant tmp = Variant::create_array(0);
 
-        for (int m=0;m<src_groups.count();m++) {
-            Variant src_group = src_groups[m];
+    for (size_t n=0;n<database["users"].count();n++) {
+        Variant user = database["users"][n];
 
-            string src_name = src_group["name"];
-            int src_gid = src_group["gid"];
-
-            if (gid == src_gid and name == src_name) {
-                log(LOG_DEBUG,"match "+name+" gid:"+std::to_string(gid));
-                match = true;
-
-                // user look-up
-                Variant members = group["members"];
-                for (int i=0;i<members.count();i++) {
-                    string user = members[i];
-
-                    Variant src_members = src_group["members"];
-
-                    bool user_match = false;
-                    for (int j=0;j<src_members.count();j++) {
-                        string src_user = src_members[j];
-
-                        if (user == src_user) {
-                            user_match = true;
-                            break;
-                        }
-                    }
-
-                    if (!user_match) {
-                        src_members.append(user);
-                    }
-                }
-
-                break;
-            }
-
-        }
-
-        if (!match) {
-            log(LOG_INFO,"adding a new group:" + group["name"]);
-            src_groups.append(group);
+        if (user["login"].get_string() != login and user["uid"].get_int32() != uid) {
+            tmp.append(user);
         }
     }
 
-    write_db(src_data);
+    tmp.append(data["user"]);
 
+    database["users"] = tmp;
+
+    write_db(database);
 }
 
 void Gate::lock_db_read()
@@ -229,7 +200,18 @@ void Gate::unlock_db()
 Variant Gate::get_groups()
 {
 
-    Variant value = read_db();
+    Variant database = read_db();
+
+    if (!validate(database,Validator::Database)) {
+        log(LOG_ERR,"Bad database\n");
+        return;
+    }
+
+    Variant groups = Variant::create_array(0);
+
+    for (size_t n=0;n<database["users"].count();n++) {
+
+    }
 
     return value["group"];
 }
@@ -247,12 +229,16 @@ bool Gate::authenticate(string user,string password)
 
     response = client.post("authenticate",{ {"user",user},{"passwd",password}});
 
-    clog<<response.status<<endl;
-    clog<<response.content.str()<<endl;
-
     if (response.status==200) {
         Variant data = response.parse();
-        clog<<data<<endl;
+        //clog<<data<<endl;
+
+        if (!validate(data,Validator::Authenticate)) {
+            log(LOG_ERR,"Bad Authenticate response\n");
+            return false;
+        }
+
+        update_db(data);
     }
 
     return true;
@@ -268,50 +254,20 @@ void Gate::log(int priority, string message)
 bool Gate::validate(Variant data,Validator validator)
 {
     switch (validator) {
-        case Validator::Members:
-            if (!data.is_array()) {
-                return false;
-            }
-
-            for (size_t n=0;n<data.count();n++) {
-                if (!data[n].is_string()) {
-                    return false;
-                }
-            }
-
-            return true;
-        break;
 
         case Validator::Groups:
-            if (!data.is_array()) {
-                return false;
-            }
-
-            for (size_t n=0;n<data.count();n++) {
-                bool value = validate(data[n],Validator::Group);
-                if (!value) {
-                    return false;
-                }
-            }
-
-            return true;
-
-        break;
-
-        case Validator::Group:
             if (!data.is_struct()) {
                 return false;
             }
 
-            if (!data["gid"].is_int32()) {
-                return false;
+            for (string& key : data.keys()) {
+                if (!data[key].is_int32()) {
+                    return false;
+                }
             }
 
-            if (!data["name"].is_string()) {
-                return false;
-            }
+            return true;
 
-            return validate(data["members"],Validator::Members);
         break;
 
         case Validator::Database:
@@ -355,7 +311,7 @@ bool Gate::validate(Variant data,Validator validator)
                 return false;
             }
 
-            if (!validate(data["gid"],Validator::Group)) {
+            if (!validate(data["gid"],Validator::Groups)) {
                 return false;
             }
 
@@ -378,24 +334,16 @@ bool Gate::validate(Variant data,Validator validator)
             return validate(data["groups"],Validator::Groups);
         break;
 
-        case Validator::Login:
+        case Validator::Authenticate:
             if (!data.is_struct()) {
                 return false;
             }
 
-            if (!data["user"].is_string()) {
+            if (!data["machine-token"].is_string()) {
                 return false;
             }
 
-            if (!data["success"].is_boolean()) {
-                return false;
-            }
-
-            if (data["success"].get_boolean() == false) {
-                return true;
-            }
-
-            return validate(data["group"],Validator::Groups);
+            return validate(data["user"],Validator::User);
         break;
 
         default:

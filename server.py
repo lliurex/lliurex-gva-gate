@@ -39,7 +39,7 @@ def authenticate():
                     "surname": ldap_information[login_name]["surname"],
                     "home": ldap_information[login_name]["home"],
                     "shell":"/bin/bash",
-                    "password_expire": ""
+                    "password_expire": "",
                     "groups": ldap_information[login_name]["groups"]
                 },
                 "machine-token": "a6d1abf7fcf04d5827db9b193a91254f915cba503a6f7f9c02a2bca05f2c8027"

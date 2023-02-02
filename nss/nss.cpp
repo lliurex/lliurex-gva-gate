@@ -27,6 +27,12 @@ extern "C" enum nss_status _nss_gvagate_getgrent_r(struct group* result, char* b
 extern "C" enum nss_status _nss_gvagate_getgrgid_r(gid_t gid, struct group* result, char* buffer, size_t buflen, int* errnop);
 extern "C" enum nss_status _nss_gvagate_getgrnam_r(const char* name, struct group* result, char *buffer, size_t buflen, int* errnop);
 
+extern "C" enum nss_status _nss_gvagate_setpwent(int stayopen);
+extern "C" enum nss_status _nss_gvagate_endpwent(void);
+extern "C" enum nss_status _nss_gvagate_getpwent_r(struct passwd* result, char* buffer, size_t buflen, int* errnop);
+extern "C" enum nss_status _nss_gvagate_getpwuid_r(uid_t uid, struct passwd* result, char* buffer, size_t buflen, int* errnop);
+extern "C" enum nss_status _nss_gvagate_getpwnam_r(const char* name, struct passwd* result, char* buffer, size_t buflen, int* errnop);
+
 namespace lliurex
 {
     struct Group
@@ -232,4 +238,29 @@ nss_status _nss_gvagate_getgrnam_r(const char* name, struct group* result, char 
     // not found
     *errnop = ENOENT;
     return NSS_STATUS_NOTFOUND;
+}
+
+enum nss_status _nss_gvagate_setpwent(int stayopen)
+{
+    return NSS_STATUS_SUCCESS;
+}
+
+enum nss_status _nss_gvagate_endpwent(void)
+{
+    return NSS_STATUS_SUCCESS;
+}
+
+enum nss_status _nss_gvagate_getpwent_r(struct passwd* result, char* buffer, size_t buflen, int* errnop)
+{
+    return NSS_STATUS_SUCCESS;
+}
+
+enum nss_status _nss_gvagate_getpwuid_r(uid_t uid, struct passwd* result, char* buffer, size_t buflen, int* errnop)
+{
+    return NSS_STATUS_SUCCESS;
+}
+
+enum nss_status _nss_gvagate_getpwnam_r(const char* name, struct passwd* result, char* buffer, size_t buflen, int* errnop)
+{
+    return NSS_STATUS_SUCCESS;
 }

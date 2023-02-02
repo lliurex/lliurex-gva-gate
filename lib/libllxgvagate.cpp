@@ -110,27 +110,20 @@ void Gate::create_db()
     Variant database = Variant::create_struct();
 
     database["magic"] = LLX_GVA_GATE_MAGIC;
-    database["group"] = Variant::create_array(0);
+    database["machine-token"] = "";
 
-    Variant grp = Variant::create_struct();
-    grp["name"] = "students";
-    grp["gid"] = 10003;
-    grp["members"] = Variant::create_array(0);
-    grp["members"].append("alpha");
-    grp["members"].append("bravo");
-    grp["members"].append("charlie");
-    database["group"].append(grp);
-
-    grp = Variant::create_struct();
-    grp["name"] = "teachers";
-    grp["gid"] = 10004;
-    grp["members"] = Variant::create_array(0);
-    grp["members"].append("delta");
-    grp["members"].append("echo");
-    grp["members"].append("foxtrot");
-    database["group"].append(grp);
+    database["users"] = Variant::create_array(0);
 
     write_db(database);
+}
+
+string Gate::machine_token()
+{
+    Variant database = read_db();
+
+    //validate here
+
+    return database["machine-token"].get_string();
 }
 
 void Gate::update_db(Variant data)
@@ -334,7 +327,55 @@ bool Gate::validate(Variant data,Validator validator)
                 return false;
             }
 
-            return validate(data["group"],Validator::Groups);
+            if (!data["machine-token"].is_string()) {
+                return false;
+            }
+
+            return validate(data["users"],Validator::Users);
+        break;
+
+        case Validator::Users:
+            if (!data.is_array()) {
+                return false;
+            }
+
+            for (size_t n=0;n<data.count();n++) {
+                return validate(data[n],Validator::User);
+            }
+
+            return true;
+        break;
+
+        case Validator::User:
+            if (!data["login"].is_string()) {
+                return false;
+            }
+
+            if (!data["uid"].is_int32()) {
+                return false;
+            }
+
+            if (!validate(data["gid"],Validator::Group)) {
+                return false;
+            }
+
+            if (!data["name"].is_string()) {
+                return false;
+            }
+
+            if (!data["surname"].is_string()) {
+                return false;
+            }
+
+            if (!data["home"].is_string()) {
+                return false;
+            }
+
+            if (!data["shell"].is_string()) {
+                return false;
+            }
+
+            return validate(data["groups"],Validator::Groups);
         break;
 
         case Validator::Login:

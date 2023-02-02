@@ -20,6 +20,8 @@ namespace lliurex
 {
     enum class Validator {
         Database,
+        Users,
+        User,
         Group,
         Groups,
         Members,
@@ -41,6 +43,7 @@ namespace lliurex
         void write_db(edupals::variant::Variant data);
 
         void create_db();
+        std::string machine_token();
 
         void update_db(edupals::variant::Variant data);
 

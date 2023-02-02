@@ -28,10 +28,8 @@ def login():
 @api.route('/authenticate', methods=['POST'])
 def authenticate():
     login_name = request.form.get("user")
-    print(passwd[login_name])
     try:
         status = passwd[login_name] == request.form.get("passwd")
-        print(status)
         data = {"user":
                 {
                     "login":login_name,
@@ -42,8 +40,8 @@ def authenticate():
                     "home": ldap_information[login_name]["home"],
                     "shell":"/bin/bash",
                     "password_expire": ""
+                    "groups": ldap_information[login_name]["groups"]
                 },
-                "groups": ldap_information[login_name]["groups"],
                 "machine-token": "a6d1abf7fcf04d5827db9b193a91254f915cba503a6f7f9c02a2bca05f2c8027"
             }
     except:

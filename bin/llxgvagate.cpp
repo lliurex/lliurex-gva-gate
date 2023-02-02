@@ -6,6 +6,7 @@
 
 #include <variant.hpp>
 #include <console.hpp>
+#include <cmd.hpp>
 
 #include <iostream>
 #include <string>
@@ -38,16 +39,42 @@ void log(int priority,string message)
 int main(int argc,char* argv[])
 {
 
+    cmd::ArgumentParser parser;
+    cmd::ParseResult result;
+
+    parser.add_option(cmd::Option('h',"help",cmd::ArgumentType::None));
+    parser.add_option(cmd::Option('v',"version",cmd::ArgumentType::None));
+
+    result=parser.parse(argc,argv);
+
+    if (!result.success()) {
+        return 1;
+    }
+
+    /*
+    for (cmd::Option o:result.options) {
+        clog<<"+ "<<o.short_name<<endl;
+    }
+
+    for (string s:result.args) {
+        clog<<"* "<<s<<endl;
+    }
+    */
+
     string cmd;
 
-    if (argc>1) {
-        cmd = argv[1];
+    if (result.args.size()>1) {
+        cmd = result.args[1];
     }
 
     if (cmd == "create") {
         Gate gate(log);
-
         gate.create_db();
+    }
+
+    if (cmd == "machine-token") {
+        Gate gate(log);
+        cout<<gate.machine_token()<<endl;
     }
 
     if (cmd == "groups") {

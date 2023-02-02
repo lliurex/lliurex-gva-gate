@@ -197,6 +197,21 @@ void Gate::unlock_db()
     }
 }
 
+static Variant find_group(Variant groups, string name, uint32_t gid)
+{
+    Variant ret;
+
+    for (size_t n=0;n<groups.count();n++) {
+        Variant group = groups[n];
+
+        if (group["name"].get_string() == name and group["gid"].get_int32()) {
+            return group;
+        }
+    }
+
+    return ret;
+}
+
 Variant Gate::get_groups()
 {
 
@@ -210,10 +225,14 @@ Variant Gate::get_groups()
     Variant groups = Variant::create_array(0);
 
     for (size_t n=0;n<database["users"].count();n++) {
+        Variant user = database["users"][n];
 
+        for (string& gname : user["groups"].keys()) {
+
+        }
     }
 
-    return value["group"];
+    return groups;
 }
 
 void Gate::set_logger(function<void(int priority,string message)> cb)

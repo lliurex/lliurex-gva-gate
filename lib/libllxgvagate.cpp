@@ -197,7 +197,7 @@ void Gate::unlock_db()
     }
 }
 
-static Variant find_group(Variant groups, string name, uint32_t gid)
+static Variant find_group(Variant groups, string name, int32_t gid)
 {
     Variant ret;
 
@@ -212,23 +212,65 @@ static Variant find_group(Variant groups, string name, uint32_t gid)
     return ret;
 }
 
+static void append_member(Variant group,string name)
+{
+    bool found = false;
+    for (size_t n=0;n<group.count();n++) {
+        if (group[n].get_string() == name) {
+            found = true;
+            break;
+        }
+    }
+
+    if (!found) {
+        group.append(name);
+    }
+}
+
 Variant Gate::get_groups()
 {
-
+    Variant groups;
     Variant database = read_db();
 
     if (!validate(database,Validator::Database)) {
         log(LOG_ERR,"Bad database\n");
-        return;
+        return groups;
     }
 
-    Variant groups = Variant::create_array(0);
+    groups = Variant::create_array(0);
 
     for (size_t n=0;n<database["users"].count();n++) {
         Variant user = database["users"][n];
 
-        for (string& gname : user["groups"].keys()) {
+        Variant main_group = user["gid"];
+        string mgname = user["gid"].keys()[0];
+        int32_t mgid = user["gid"][mgname];
+        main_group = find_group(groups,mgname,mgid);
 
+        if (main_group.none()) {
+            main_group = Variant::create_struct();
+            main_group["name"] = mgname;
+            main_group["gid"] = mgid;
+            main_group["members"] = Variant::create_array(0);
+            groups.append(main_group);
+        }
+
+        for (string& gname : user["groups"].keys()) {
+            int32_t gid = user["groups"][gname];
+
+            Variant group = find_group(groups,gname,gid);
+
+            if (group.none()) {
+                group = Variant::create_struct();
+                group["name"] = gname;
+                group["gid"] = gid;
+                group["members"] = Variant::create_array(0);
+                append_member(group["members"],user["login"].get_string());
+                groups.append(group);
+            }
+            else {
+                append_member(group["members"],user["login"].get_string());
+            }
         }
     }
 

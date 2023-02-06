@@ -85,14 +85,12 @@ int main(int argc,char* argv[])
 
             Variant members = groups[n]["members"];
 
-            int m = 0;
+            for (size_t n=0;n<members.count();n++) {
+                cout<<members[n].get_string();
 
-            L0:
-            cout<<members[m].get_string();
-            m++;
-            if (m<members.count()) {
-                cout<<",";
-                goto L0;
+                if (n<(members.count()-1)) {
+                    cout<<",";
+                }
             }
 
             cout<<endl;

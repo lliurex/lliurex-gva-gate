@@ -97,7 +97,19 @@ int main(int argc,char* argv[])
         }
     }
 
-    if (cmd == "update") {
+    if (cmd == "users") {
+        Gate gate(log);
+        Variant users = gate.get_users();
+        for (int n=0;n<users.count();n++) {
+            Variant passwd = users[n];
+
+            cout<<passwd["name"].get_string()<<":x:";
+            cout<<passwd["uid"].get_int32()<<":";
+            cout<<passwd["gid"].get_int32()<<":";
+            cout<<passwd["gecos"].get_string()<<":";
+            cout<<passwd["dir"].get_string()<<":";
+            cout<<passwd["shell"].get_string()<<endl;
+        }
     }
 
     if (cmd == "login" and argc>3) {

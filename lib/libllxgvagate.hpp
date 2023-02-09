@@ -50,6 +50,7 @@ namespace lliurex
         void unlock_db();
 
         edupals::variant::Variant get_groups();
+        edupals::variant::Variant get_users();
 
         bool authenticate(std::string user,std::string password);
 

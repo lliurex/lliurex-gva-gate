@@ -277,6 +277,37 @@ Variant Gate::get_groups()
     return groups;
 }
 
+Variant Gate::get_users()
+{
+    Variant users;
+    Variant database = read_db();
+
+    if (!validate(database,Validator::Database)) {
+        log(LOG_ERR,"Bad database\n");
+        return users;
+    }
+
+    users = Variant::create_array(0);
+
+    for (size_t n=0;n<database["users"].count();n++) {
+        Variant user = database["users"][n];
+
+        Variant ent = Variant::create_struct();
+        ent["name"] = user["login"];
+        ent["uid"] = user["uid"];
+        string mgname = user["gid"].keys()[0];
+        ent["gid"] = user["gid"][mgname];
+        ent["dir"] = user["home"];
+        ent["shell"] = user["shell"];
+        string gecos = user["surname"].get_string() + "," +user["name"].get_string();
+        ent["gecos"] = gecos;
+
+        users.append(ent);
+    }
+
+    return users;
+}
+
 void Gate::set_logger(function<void(int priority,string message)> cb)
 {
     this->log_cb = cb;

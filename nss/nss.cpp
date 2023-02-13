@@ -16,6 +16,7 @@
 #include <cstring>
 #include <mutex>
 #include <chrono>
+#include <functional>
 
 using namespace edupals;
 using namespace edupals::variant;
@@ -43,13 +44,6 @@ namespace lliurex
         std::vector<std::string> members;
     };
 
-    std::mutex mtx;
-    std::vector<lliurex::Group> groups;
-    int index = -1;
-    std::chrono::time_point<std::chrono::steady_clock> timestamp;
-
-    bool debug = false;
-
     struct Passwd
     {
         std::string name;
@@ -62,53 +56,20 @@ namespace lliurex
         std::string shell;
     };
 
-    template<class T>
-    class NSSContext
-    {
-        public:
+    std::mutex mtx;
+    std::mutex pmtx;
 
-            NSSContext() : index(-1)
-            {
-            }
+    std::vector<lliurex::Group> groups;
+    std::vector<lliurex::Passwd> users;
 
-            ~NSSContext()
-            {
-            }
+    int index = -1;
+    int pindex = -1;
 
-            void reset()
-            {
-                index = -1;
-            }
+    std::chrono::time_point<std::chrono::steady_clock> timestamp;
+    std::chrono::time_point<std::chrono::steady_clock> ptimestamp;
 
-            void next()
-            {
-                index++;
-            }
+    bool debug = false;
 
-            bool end() const
-            {
-                return (index == entries.size());
-            }
-
-            T& current() const
-            {
-                return entries[index];
-            }
-
-            std::mutex& mutex()
-            {
-                return mtx;
-            }
-
-        protected:
-
-        std::mutex mtx;
-        std::vector<T> entries;
-        int index = -1;
-        std::chrono::time_point<std::chrono::steady_clock> timestamp;
-    };
-
-    NSSContext<Passwd> ctx_passwd;
 }
 
 static int push_string(string in,char** buffer, size_t* remain)
@@ -171,6 +132,46 @@ static int push_group(lliurex::Group& source, struct group* result, char* buffer
     return 0;
 }
 
+static int push_passwd(lliurex::Passwd& source, struct passwd* result, char* buffer, size_t buflen)
+{
+    char* ptr = buffer;
+
+    result->pw_uid = source.uid;
+    result->pw_gid = source.gid;
+
+    result->pw_name = ptr;
+
+    if (push_string(source.name,&ptr,&buflen) == -1) {
+        return -1;
+    }
+
+    result->pw_passwd = ptr;
+
+    if (push_string("x",&ptr,&buflen) == -1) {
+        return -1;
+    }
+
+    result->pw_gecos = ptr;
+
+    if (push_string(source.gecos,&ptr,&buflen) == -1) {
+        return -1;
+    }
+
+    result->pw_dir = ptr;
+
+    if (push_string(source.dir,&ptr,&buflen) == -1) {
+        return -1;
+    }
+
+    result->pw_shell = ptr;
+
+    if (push_string(source.shell,&ptr,&buflen) == -1) {
+        return -1;
+    }
+
+    return 0;
+}
+
 int update_db()
 {
     lliurex::Gate gate;
@@ -191,6 +192,22 @@ int update_db()
 
         lliurex::groups.push_back(grp);
     }
+
+    return 0;
+}
+
+int update_passwd_db()
+{
+    std::chrono::time_point<std::chrono::steady_clock> now = std::chrono::steady_clock::now();
+
+
+    double delta = std::chrono::duration_cast<std::chrono::seconds>(now - lliurex::ptimestamp).count();
+
+    if (delta < 2.0) {
+        return 0;
+    }
+
+    lliurex::ptimestamp = now;
 
     return 0;
 }
@@ -303,6 +320,17 @@ nss_status _nss_gvagate_getgrnam_r(const char* name, struct group* result, char 
 
 enum nss_status _nss_gvagate_setpwent(int stayopen)
 {
+    std::lock_guard<std::mutex> lock(lliurex::pmtx);
+
+    lliurex::pindex = -1;
+
+    int db_status = update_passwd_db();
+    if (db_status == -1) {
+        return NSS_STATUS_UNAVAIL;
+    }
+
+    lliurex::pindex = 0;
+
     return NSS_STATUS_SUCCESS;
 }
 
@@ -313,6 +341,22 @@ enum nss_status _nss_gvagate_endpwent(void)
 
 enum nss_status _nss_gvagate_getpwent_r(struct passwd* result, char* buffer, size_t buflen, int* errnop)
 {
+    std::lock_guard<std::mutex> lock(lliurex::pmtx);
+
+    if (lliurex::pindex == lliurex::users.size()) {
+        return NSS_STATUS_NOTFOUND;
+    }
+
+    lliurex::Passwd& pwd = lliurex::users[lliurex::index];
+
+    int status = push_passwd(pwd,result,buffer,buflen);
+    if (status == -1) {
+        *errnop = ERANGE;
+        return NSS_STATUS_TRYAGAIN;
+    }
+
+    lliurex::pindex++;
+
     return NSS_STATUS_SUCCESS;
 }
 

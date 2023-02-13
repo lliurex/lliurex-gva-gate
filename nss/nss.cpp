@@ -4,6 +4,7 @@
 
 #include "libllxgvagate.hpp"
 
+#include <cstdint>
 #include <nss.h>
 #include <grp.h>
 #include <systemd/sd-journal.h>
@@ -48,6 +49,66 @@ namespace lliurex
     std::chrono::time_point<std::chrono::steady_clock> timestamp;
 
     bool debug = false;
+
+    struct Passwd
+    {
+        std::string name;
+        uint64_t uid;
+        uint64_t gid;
+
+        std::string gecos;
+
+        std::string dir;
+        std::string shell;
+    };
+
+    template<class T>
+    class NSSContext
+    {
+        public:
+
+            NSSContext() : index(-1)
+            {
+            }
+
+            ~NSSContext()
+            {
+            }
+
+            void reset()
+            {
+                index = -1;
+            }
+
+            void next()
+            {
+                index++;
+            }
+
+            bool end() const
+            {
+                return (index == entries.size());
+            }
+
+            T& current() const
+            {
+                return entries[index];
+            }
+
+            std::mutex& mutex()
+            {
+                return mtx;
+            }
+
+        protected:
+
+        std::mutex mtx;
+        std::vector<T> entries;
+        int index = -1;
+        std::chrono::time_point<std::chrono::steady_clock> timestamp;
+    };
+
+    NSSContext<Passwd> ctx_passwd;
 }
 
 static int push_string(string in,char** buffer, size_t* remain)

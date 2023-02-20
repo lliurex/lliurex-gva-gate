@@ -23,6 +23,7 @@ namespace lliurex
         Users,
         User,
         Groups,
+        Group,
         Authenticate
     };
 

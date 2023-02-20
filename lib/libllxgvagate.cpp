@@ -348,18 +348,34 @@ bool Gate::validate(Variant data,Validator validator)
     switch (validator) {
 
         case Validator::Groups:
-            if (!data.is_struct()) {
+            if (!data.is_array()) {
                 return false;
             }
 
-            for (string& key : data.keys()) {
-                if (!data[key].is_int32()) {
+            for (size_t n=0;n<data.count();n++) {
+                if (!validate(data[n],Validator::Group)) {
                     return false;
                 }
             }
 
             return true;
 
+        break;
+
+        case Validator::Group:
+            if (!data.is_struct()) {
+                return false;
+            }
+
+            if (!data["name"].is_string()) {
+                return false;
+            }
+
+            if (!data["gid"].is_int32()) {
+                return false;
+            }
+
+            return true;
         break;
 
         case Validator::Database:
@@ -403,7 +419,7 @@ bool Gate::validate(Variant data,Validator validator)
                 return false;
             }
 
-            if (!validate(data["gid"],Validator::Groups)) {
+            if (!validate(data["gid"],Validator::Group)) {
                 return false;
             }
 

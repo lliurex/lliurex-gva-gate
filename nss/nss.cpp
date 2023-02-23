@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <nss.h>
 #include <grp.h>
+#include <pwd.h>
 #include <systemd/sd-journal.h>
 
 #include <cstddef>

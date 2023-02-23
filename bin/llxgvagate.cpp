@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "libllxgvagate.hpp"
+#include "hash.hpp"
 
 #include <variant.hpp>
 #include <console.hpp>
@@ -125,6 +126,18 @@ int main(int argc,char* argv[])
     if (cmd == "test-write") {
         Gate gate(log);
         gate.test_write();
+    }
+
+    if (cmd == "test-hash") {
+        string input = "quique";
+        clog<<"input:"<<input<<endl;
+        string digest = lliurex::hash::sha1(input);
+
+        for (size_t n=0;n<digest.size();n++) {
+            uint32_t v = digest[n] & 0x000000ff;
+            clog<<std::hex<<v;
+        }
+        clog<<endl;
     }
 
     return 0;

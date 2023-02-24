@@ -4,11 +4,12 @@
 
 #include "hash.hpp"
 
+#include <cstdint>
 #include <openssl/evp.h>
 
 using namespace std;
 
-string lliurex::hash::sha1(string input)
+vector<uint8_t> lliurex::hash::sha1(string input)
 {
     const EVP_MD* md;
     EVP_MD_CTX* mdctx;
@@ -27,7 +28,20 @@ string lliurex::hash::sha1(string input)
 
     EVP_cleanup();
 
-    string ret((char*)md_value);
+    vector<uint8_t> ret(md_value,md_value + md_len);
 
     return ret;
+}
+
+ostream& lliurex::hash::operator<<(ostream& os,vector<uint8_t> value)
+{
+    std::ios_base::fmtflags state = os.flags();
+    os<<std::hex;
+    for (uint8_t v:value) {
+        os<<(int)v;
+    }
+
+    os.flags(state);
+
+    return os;
 }

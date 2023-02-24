@@ -6,12 +6,18 @@
 #define LLX_GVA_GATE_HASH
 
 #include <string>
+#include <vector>
+#include <cstdint>
+#include <iostream>
 
 namespace lliurex
 {
     namespace hash
     {
-        std::string sha1(std::string input);
+        std::vector<uint8_t> sha1(std::string input);
+
+        std::ostream& operator<<(std::ostream& os,std::vector<uint8_t> value);
+
     }
 }
 

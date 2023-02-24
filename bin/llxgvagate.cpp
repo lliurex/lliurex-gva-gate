@@ -13,6 +13,7 @@
 #include <string>
 
 using namespace lliurex;
+using namespace lliurex::hash;
 
 using namespace edupals;
 using namespace edupals::variant;
@@ -131,13 +132,7 @@ int main(int argc,char* argv[])
     if (cmd == "test-hash") {
         string input = "quique";
         clog<<"input:"<<input<<endl;
-        string digest = lliurex::hash::sha1(input);
-
-        for (size_t n=0;n<digest.size();n++) {
-            uint32_t v = digest[n] & 0x000000ff;
-            clog<<std::hex<<v;
-        }
-        clog<<endl;
+        clog<<lliurex::hash::sha1(input)<<endl;
     }
 
     return 0;

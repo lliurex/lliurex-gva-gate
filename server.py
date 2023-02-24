@@ -7,7 +7,7 @@ group = [{"gid": 10003, "name": "students", "members": ["jaume","alu01","alu02"]
 
 passwd = {"alu01" : "alu01secret"}
 
-ldap_information = {"alu01":{"password":"alu01secret","gid":{"name":"Domain Users","gid:"288400513}, "groups":[{"name":"teachers","gid":10003},{"name":"GRP_03000394":"gid":288412920},{"name":"DenegarPermisosListadoAD","gid":74373983},{"name":"Docente","gid":288412920}],"uid":288430185,"name":"Alumno","surname":"Estudiante","home":"/home/alu01"}}
+ldap_information = {"alu01":{"password":"alu01secret","gid":{"name":"Domain Users","gid":288400513}, "groups":[{"name":"teachers","gid":10003},{"name":"GRP_03000394","gid":288412920},{"name":"DenegarPermisosListadoAD","gid":74373983},{"name":"Docente","gid":288412920}],"uid":288430185,"name":"Alumno","surname":"Estudiante","home":"/home/alu01"}}
 
 api = Flask(__name__)
 

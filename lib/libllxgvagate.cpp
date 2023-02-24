@@ -243,8 +243,8 @@ Variant Gate::get_groups()
         Variant user = database["users"][n];
 
         Variant main_group = user["gid"];
-        string mgname = user["gid"].keys()[0];
-        int32_t mgid = user["gid"][mgname];
+        string mgname = user["gid"]["name"].get_string();
+        int32_t mgid = user["gid"]["gid"].get_int32();
         main_group = find_group(groups,mgname,mgid);
 
         if (main_group.none()) {
@@ -255,8 +255,9 @@ Variant Gate::get_groups()
             groups.append(main_group);
         }
 
-        for (string& gname : user["groups"].keys()) {
-            int32_t gid = user["groups"][gname];
+        for (size_t n=0;n<user["groups"].count();n++) {
+            string gname = user["groups"][n]["name"].get_string();
+            int32_t gid = user["groups"][n]["gid"].get_int32();
 
             Variant group = find_group(groups,gname,gid);
 
@@ -295,8 +296,7 @@ Variant Gate::get_users()
         Variant ent = Variant::create_struct();
         ent["name"] = user["login"];
         ent["uid"] = user["uid"];
-        string mgname = user["gid"].keys()[0];
-        ent["gid"] = user["gid"][mgname];
+        ent["gid"] = user["gid"]["gid"];
         ent["dir"] = user["home"];
         ent["shell"] = user["shell"];
         string gecos = user["surname"].get_string() + "," +user["name"].get_string();
@@ -323,7 +323,7 @@ bool Gate::authenticate(string user,string password)
 
     if (response.status==200) {
         Variant data = response.parse();
-        //clog<<data<<endl;
+        clog<<data<<endl;
 
         if (!validate(data,Validator::Authenticate)) {
             log(LOG_ERR,"Bad Authenticate response\n");

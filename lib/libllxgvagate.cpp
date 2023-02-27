@@ -5,6 +5,7 @@
 #include "libllxgvagate.hpp"
 #include "http.hpp"
 
+#include <sys/syslog.h>
 #include <variant.hpp>
 #include <json.hpp>
 #include <bson.hpp>
@@ -323,7 +324,7 @@ bool Gate::authenticate(string user,string password)
 
     if (response.status==200) {
         Variant data = response.parse();
-        clog<<data<<endl;
+        //clog<<data<<endl;
 
         if (!validate(data,Validator::Authenticate)) {
             log(LOG_ERR,"Bad Authenticate response\n");
@@ -438,7 +439,6 @@ bool Gate::validate(Variant data,Validator validator)
             if (!data["shell"].is_string()) {
                 return false;
             }
-
             return validate(data["groups"],Validator::Groups);
         break;
 
@@ -450,7 +450,6 @@ bool Gate::validate(Variant data,Validator validator)
             if (!data["machine-token"].is_string()) {
                 return false;
             }
-
             return validate(data["user"],Validator::User);
         break;
 

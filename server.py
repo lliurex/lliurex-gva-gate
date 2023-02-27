@@ -34,7 +34,7 @@ def authenticate():
                 {
                     "login":login_name,
                     "uid":ldap_information[login_name]["uid"],
-                    "gid":{"Domain Users": 288400513},
+                    "gid":{"name":"Domain Users", "gid":288400513},
                     "name":ldap_information[login_name]["name"],
                     "surname": ldap_information[login_name]["surname"],
                     "home": ldap_information[login_name]["home"],

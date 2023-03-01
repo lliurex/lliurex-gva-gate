@@ -4,18 +4,29 @@
 
 #include "filedb.hpp"
 
+#include <variant.hpp>
+#include <json.hpp>
+#include <bson.hpp>
+
 #include <sys/file.h>
 #include <unistd.h>
 
 #include <experimental/filesystem>
 
 using namespace lliurex;
+using namespace edupals;
+using namespace edupals::variant;
 
 using namespace std;
 namespace stdfs=std::experimental::filesystem;
 
-FileDB::FileDB(string path) : path(path), format(DBFormat::Json), db(nullptr)
+FileDB::FileDB() : db(nullptr)
 {
+}
+
+FileDB::FileDB(string path,string magic) : path(path), format(DBFormat::Json), db(nullptr), magic(magic)
+{
+
 }
 
 FileDB::~FileDB()
@@ -37,8 +48,13 @@ bool FileDB::is_open()
 
 void FileDB::create(DBFormat format)
 {
+    this->format = format;
+
     db = fopen(path.c_str(),"wb");
     lock_write();
+
+    Variant data;
+    write(data);
 
     unlock();
     close();
@@ -46,7 +62,12 @@ void FileDB::create(DBFormat format)
 
 void FileDB::open()
 {
-
+    if (db != nullptr) {
+        db = fopen(path.c_str(),"r+");
+    }
+    else {
+        //TODO
+    }
 }
 
 void FileDB::close()
@@ -81,7 +102,7 @@ void FileDB::lock_write()
 
 void FileDB::unlock()
 {
-        int fd = fileno(db);
+    int fd = fileno(db);
     int status = flock(fd,LOCK_UN);
 
     if (status != 0) {
@@ -116,19 +137,32 @@ edupals::variant::Variant FileDB::read()
          value = bson::load(ss);
     }
 
-    return value;
+    if (!value.is_struct()) {
+        //TODO
+    }
+
+    if (value["magic"].get_string() != magic) {
+        //TODO
+    }
+
+    return value["data"];
 }
 
 void FileDB::write(edupals::variant::Variant data)
 {
     stringstream ss;
 
+    Variant header;
+    header = Variant::create_struct();
+    header["magic"] = magic;
+    header["data"] = data;
+
     if (format == DBFormat::Json) {
-        json::dump(data,ss);
+        json::dump(header,ss);
     }
 
     if (format == DBFormat::Bson) {
-        bson::dump(data,ss);
+        bson::dump(header,ss);
     }
 
     fseek(db,0,SEEK_SET);
@@ -141,5 +175,27 @@ void FileDB::write(edupals::variant::Variant data)
         //TODO: raise exception here?
     }
 
+
 }
 
+void FileDB::guess_format()
+{
+    uint32_t data;
+    size_t len;
+
+    fseek(db,0,SEEK_SET);
+    len = fread(&data,sizeof(uint32_t),1,db);
+
+    if (len != 1) {
+        //TODO
+    }
+
+    if (data == '{') {
+        format = DBFormat::Json;
+    }
+    else {
+        // improve this
+        format = DBFormat::Bson;
+    }
+
+}

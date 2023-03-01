@@ -21,7 +21,8 @@ namespace lliurex
     {
         public:
 
-        FileDB(std::string path);
+        FileDB();
+        FileDB(std::string path,std::string magic);
         virtual ~FileDB();
 
         bool exists();
@@ -41,9 +42,13 @@ namespace lliurex
 
         protected:
 
+        void guess_format();
+
         DBFormat format;
         std::string path;
         FILE* db;
+        std::string magic;
+
     };
 
     class AutoLock

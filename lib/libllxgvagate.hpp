@@ -5,6 +5,8 @@
 #ifndef LLX_GVA_GATE
 #define LLX_GVA_GATE
 
+#include "filedb.hpp"
+
 #include <variant.hpp>
 
 #include <syslog.h>
@@ -69,6 +71,10 @@ namespace lliurex
         FILE* dbase;
 
         std::function<void(int priority,std::string message)> log_cb;
+
+        FileDB userdb;
+        FileDB shadowdb;
+
     };
 }
 

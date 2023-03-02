@@ -9,6 +9,7 @@
 #include <bson.hpp>
 
 #include <sys/file.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <experimental/filesystem>
@@ -46,11 +47,14 @@ bool FileDB::is_open()
     return (db != nullptr);
 }
 
-void FileDB::create(DBFormat format)
+void FileDB::create(DBFormat format,uint32_t mode)
 {
     this->format = format;
 
     db = fopen(path.c_str(),"wb");
+    int fd = fileno(db);
+    fchmod(fd,mode);
+
     lock_write();
 
     Variant data;

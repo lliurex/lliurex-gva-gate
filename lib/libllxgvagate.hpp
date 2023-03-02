@@ -74,6 +74,7 @@ namespace lliurex
 
         FileDB userdb;
         FileDB shadowdb;
+        FileDB tokendb;
 
     };
 }

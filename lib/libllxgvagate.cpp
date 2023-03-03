@@ -3,8 +3,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "libllxgvagate.hpp"
+#include "filedb.hpp"
 #include "http.hpp"
 
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <sys/syslog.h>
 #include <variant.hpp>
 #include <json.hpp>
@@ -43,6 +46,12 @@ Gate::Gate(function<void(int priority,string message)> cb) : log_cb(cb), dbase(n
     }
 
     dbase = fopen(LLX_GVA_GATE_DB,"r+");
+
+    // ------
+    userdb = FileDB(LLX_GVA_GATE_USER_DB_PATH,LLX_GVA_GATE_USER_DB_MAGIC);
+    tokendb = FileDB(LLX_GVA_GATE_TOKEN_DB_PATH,LLX_GVA_GATE_TOKEN_DB_MAGIC);
+    shadowdb = FileDB(LLX_GVA_GATE_SHADOW_DB_PATH,LLX_GVA_GATE_SHADOW_DB_MAGIC);
+
 }
 
 Gate::~Gate()
@@ -116,6 +125,27 @@ void Gate::create_db()
     database["users"] = Variant::create_array(0);
 
     write_db(database);
+
+    // checking db dir first
+    const stdfs::path dbdir {LLX_GVA_GATE_DB_PATH};
+    stdfs::create_directories(dbdir);
+
+
+    // user db
+    if (!userdb.exists()) {
+        userdb.create(DBFormat::Json,S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR);
+    }
+
+    // token db
+    if (!tokendb.exists()) {
+        tokendb.create(DBFormat::Json,S_IRUSR | S_IRGRP | S_IWUSR);
+    }
+
+    // shadow db
+    if (!shadowdb.exists()) {
+        shadowdb.create(DBFormat::Json,S_IRUSR | S_IRGRP | S_IWUSR);
+    }
+
 }
 
 string Gate::machine_token()

@@ -57,7 +57,7 @@ void FileDB::create(DBFormat format,uint32_t mode)
 
     lock_write();
 
-    Variant data;
+    Variant data = Variant::create_struct();
     write(data);
 
     unlock();

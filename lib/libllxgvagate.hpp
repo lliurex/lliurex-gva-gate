@@ -52,9 +52,12 @@ namespace lliurex
         Gate();
         Gate(std::function<void(int priority,std::string message)> cb);
 
+
         virtual ~Gate();
 
         bool exists_db();
+        void open();
+
         edupals::variant::Variant read_db();
         void write_db(edupals::variant::Variant data);
 

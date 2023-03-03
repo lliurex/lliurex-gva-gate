@@ -20,7 +20,7 @@ using namespace edupals::variant;
 
 using namespace std;
 
-bool verbose = false;
+bool verbose = true;
 
 void log(int priority,string message)
 {

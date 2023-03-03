@@ -63,9 +63,41 @@ Gate::~Gate()
 
 bool Gate::exists_db()
 {
-    const stdfs::path dbpath {LLX_GVA_GATE_DB};
+    bool status = userdb.exists() and tokendb.exists() and shadowdb.exists();
 
-    return stdfs::exists(dbpath);
+    return status;
+}
+
+void Gate::open()
+{
+
+    if (!userdb.exists()) {
+        log(LOG_ERR,"User database does not exists\n");
+    }
+    else {
+        if (!userdb.is_open()) {
+            userdb.open();
+        }
+    }
+
+    if (!tokendb.exists()) {
+        log(LOG_ERR,"Token database does not exists\n");
+    }
+    else {
+        if (!tokendb.is_open()) {
+            tokendb.open();
+        }
+    }
+
+    if (!shadowdb.exists()) {
+        log(LOG_ERR,"Shadow database does not exists\n");
+    }
+    else {
+        if (!shadowdb.is_open()) {
+            shadowdb.open();
+        }
+    }
+
 }
 
 Variant Gate::read_db()
@@ -117,14 +149,6 @@ void Gate::write_db(Variant data)
 void Gate::create_db()
 {
     log(LOG_DEBUG,"Creating an empty database\n");
-    Variant database = Variant::create_struct();
-
-    database["magic"] = LLX_GVA_GATE_MAGIC;
-    database["machine-token"] = "";
-
-    database["users"] = Variant::create_array(0);
-
-    write_db(database);
 
     // checking db dir first
     const stdfs::path dbdir {LLX_GVA_GATE_DB_PATH};
@@ -150,14 +174,15 @@ void Gate::create_db()
 
 string Gate::machine_token()
 {
-    Variant database = read_db();
 
-    if (!validate(database,Validator::Database)) {
-        log(LOG_ERR,"Bad database\n");
-        return "";
-    }
 
-    return database["machine-token"].get_string();
+    tokendb.lock_read();
+    Variant data = tokendb.read();
+    tokendb.unlock();
+
+    //TODO: validate here
+
+    return data["machine-token"].get_string();
 }
 
 void Gate::update_db(Variant data)

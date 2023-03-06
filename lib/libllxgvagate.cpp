@@ -133,9 +133,9 @@ void Gate::create_db()
 
 string Gate::machine_token()
 {
-    tokendb.lock_read();
+    AutoLock lock(LockMode::Read,&tokendb);
+
     Variant data = tokendb.read();
-    tokendb.unlock();
 
     //TODO: validate here
 
@@ -145,8 +145,8 @@ string Gate::machine_token()
 void Gate::update_db(Variant data)
 {
 
-    userdb.lock_write();
-    tokendb.lock_write();
+    AutoLock user_lock(LockMode::Write,&userdb);
+    AutoLock token_lock(LockMode::Write,&tokendb);
 
     Variant token_data = Variant::create_struct();
     token_data["machine-token"] = data["machine-token"];
@@ -173,9 +173,6 @@ void Gate::update_db(Variant data)
     user_data["users"] = tmp;
 
     userdb.write(user_data);
-
-    tokendb.unlock();
-    userdb.unlock();
 
 }
 
@@ -213,9 +210,10 @@ Variant Gate::get_groups()
 {
     Variant groups;
 
-    userdb.lock_read();
+    AutoLock lock(LockMode::Read,&userdb);
+
     Variant database = userdb.read();
-    userdb.unlock();
+
 /*
     if (!validate(database,Validator::Database)) {
         log(LOG_ERR,"Bad database\n");
@@ -266,9 +264,10 @@ Variant Gate::get_groups()
 Variant Gate::get_users()
 {
     Variant users;
-    userdb.lock_read();
+
+    AutoLock lock(LockMode::Read,&userdb);
     Variant database = userdb.read();
-    userdb.unlock();
+
 /*
     if (!validate(database,Validator::Database)) {
         log(LOG_ERR,"Bad database\n");
@@ -318,6 +317,9 @@ bool Gate::authenticate(string user,string password)
         }
 
         update_db(data);
+    }
+    else {
+        log(LOG_WARNING,"Server returned status: " + std::to_string(response.status) + "\n");
     }
 
     return true;

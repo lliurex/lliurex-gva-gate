@@ -17,6 +17,12 @@ namespace lliurex
         Bson
     };
 
+    enum class LockMode
+    {
+        Read,
+        Write
+    };
+
     class FileDB
     {
         public:
@@ -55,18 +61,13 @@ namespace lliurex
     {
         public:
 
-            enum LockMode {
-                Read,
-                Write
-            };
-
             AutoLock(LockMode mode, FileDB* target) : target(target)
             {
                 switch (mode) {
-                    case Read:
+                    case LockMode::Read:
                         target->lock_read();
                         break;
-                    case Write:
+                    case LockMode::Write:
                         target->lock_write();
                         break;
                 }
@@ -74,9 +75,13 @@ namespace lliurex
 
             ~AutoLock()
             {
-                target->unlock();
+                unlock();
             }
 
+            void unlock()
+            {
+                target->unlock();
+            }
 
         protected:
 

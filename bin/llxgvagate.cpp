@@ -11,6 +11,7 @@
 
 #include <iostream>
 #include <string>
+#include <chrono>
 
 using namespace lliurex;
 using namespace lliurex::hash;
@@ -21,25 +22,36 @@ using namespace edupals::variant;
 using namespace std;
 
 int debug_level = LOG_ERR;
+std::chrono::time_point<std::chrono::steady_clock> timestamp;
 
 void log(int priority,string message)
 {
+    std::chrono::time_point<std::chrono::steady_clock> now = std::chrono::steady_clock::now();
+
+    double secs = std::chrono::duration_cast<std::chrono::milliseconds>(now - timestamp).count()/1000.0;
+
     if (priority > debug_level ) {
         return;
     }
 
     if (priority <= LOG_ERR) {
-        clog<<console::fg::red<<console::style::bold<<message<<console::reset::all;
+        clog<<console::fg::red<<console::style::bold;
     }
-    else {
-        clog<<message;
+
+    if (priority == LOG_WARNING) {
+        clog<<console::fg::yellow<<console::style::bold;
     }
+
+    clog<<"["<<secs<<"] ";
+    clog<<message<<console::reset::all;
 
     clog.flush();
 }
 
 int main(int argc,char* argv[])
 {
+    timestamp = std::chrono::steady_clock::now();
+
     cmd::ArgumentParser parser;
     cmd::ParseResult result;
 

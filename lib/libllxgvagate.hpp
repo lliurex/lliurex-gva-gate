@@ -58,17 +58,10 @@ namespace lliurex
         bool exists_db();
         void open();
 
-        edupals::variant::Variant read_db();
-        void write_db(edupals::variant::Variant data);
-
         void create_db();
         std::string machine_token();
 
         void update_db(edupals::variant::Variant data);
-
-        void lock_db_read();
-        void lock_db_write();
-        void unlock_db();
 
         edupals::variant::Variant get_groups();
         edupals::variant::Variant get_users();
@@ -85,8 +78,6 @@ namespace lliurex
         protected:
 
         void log(int priority, std::string message);
-
-        FILE* dbase;
 
         std::function<void(int priority,std::string message)> log_cb;
 

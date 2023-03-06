@@ -35,19 +35,10 @@ Gate::Gate() : Gate(nullptr)
 {
 }
 
-Gate::Gate(function<void(int priority,string message)> cb) : log_cb(cb), dbase(nullptr)
+Gate::Gate(function<void(int priority,string message)> cb) : log_cb(cb)
 {
     log(LOG_DEBUG,"Gate constructor\n");
 
-    if (!exists_db()) {
-        log(LOG_DEBUG,"Database does not exists, creating an empty one...\n");
-        dbase = fopen(LLX_GVA_GATE_DB,"wb");
-        fclose(dbase);
-    }
-
-    dbase = fopen(LLX_GVA_GATE_DB,"r+");
-
-    // ------
     userdb = FileDB(LLX_GVA_GATE_USER_DB_PATH,LLX_GVA_GATE_USER_DB_MAGIC);
     tokendb = FileDB(LLX_GVA_GATE_TOKEN_DB_PATH,LLX_GVA_GATE_TOKEN_DB_MAGIC);
     shadowdb = FileDB(LLX_GVA_GATE_SHADOW_DB_PATH,LLX_GVA_GATE_SHADOW_DB_MAGIC);
@@ -57,8 +48,6 @@ Gate::Gate(function<void(int priority,string message)> cb) : log_cb(cb), dbase(n
 Gate::~Gate()
 {
     log(LOG_DEBUG,"Gate destructor\n");
-
-    fclose(dbase);
 }
 
 bool Gate::exists_db()
@@ -100,52 +89,6 @@ void Gate::open()
 
 }
 
-Variant Gate::read_db()
-{
-    lock_db_read();
-
-    fseek(dbase,0,SEEK_SET);
-
-    stringstream ss;
-    char buffer[128];
-    size_t len;
-
-    L0:
-    len = fread(buffer,1,128,dbase);
-
-    if (len > 0) {
-        ss.write((const char*)buffer,len);
-        goto L0;
-    }
-
-    unlock_db();
-
-    Variant value = json::load(ss);
-
-    return value;
-}
-
-void Gate::write_db(Variant data)
-{
-    stringstream ss;
-    json::dump(data,ss);
-
-    lock_db_write();
-
-    fseek(dbase,0,SEEK_SET);
-    int fd = fileno(dbase);
-    ftruncate(fd,0);
-
-    int status = fwrite(ss.str().c_str(),ss.str().size(),1,dbase);
-
-    if (status == 0) {
-        //TODO: raise exception here?
-        log(LOG_ERR,"failed to write on DB\n");
-    }
-
-    unlock_db();
-}
-
 void Gate::create_db()
 {
     log(LOG_DEBUG,"Creating an empty database\n");
@@ -158,11 +101,27 @@ void Gate::create_db()
     // user db
     if (!userdb.exists()) {
         userdb.create(DBFormat::Json,S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR);
+
+        userdb.open();
+
+        userdb.lock_write();
+        Variant user_data = Variant::create_struct();
+        user_data["users"] = Variant::create_array(0);
+        userdb.write(user_data);
+        userdb.unlock();
     }
 
     // token db
     if (!tokendb.exists()) {
         tokendb.create(DBFormat::Json,S_IRUSR | S_IRGRP | S_IWUSR);
+
+        tokendb.open();
+
+        tokendb.lock_write();
+        Variant token_data = Variant::create_struct();
+        token_data["machine-token"] = "";
+        tokendb.write(token_data);
+        tokendb.unlock();
     }
 
     // shadow db
@@ -174,8 +133,6 @@ void Gate::create_db()
 
 string Gate::machine_token()
 {
-
-
     tokendb.lock_read();
     Variant data = tokendb.read();
     tokendb.unlock();
@@ -187,20 +144,24 @@ string Gate::machine_token()
 
 void Gate::update_db(Variant data)
 {
-    Variant database = read_db();
 
-    if (!validate(database,Validator::Database)) {
-        log(LOG_ERR,"Bad database\n");
-        return;
-    }
+    userdb.lock_write();
+    tokendb.lock_write();
+
+    Variant token_data = Variant::create_struct();
+    token_data["machine-token"] = data["machine-token"];
+    tokendb.write(token_data);
+
+    Variant user_data = userdb.read();
+    //TODO: validate
 
     string login = data["user"]["login"].get_string();
     int32_t uid = data["user"]["uid"].get_int32();
 
     Variant tmp = Variant::create_array(0);
 
-    for (size_t n=0;n<database["users"].count();n++) {
-        Variant user = database["users"][n];
+    for (size_t n=0;n<user_data["users"].count();n++) {
+        Variant user = user_data["users"][n];
 
         if (user["login"].get_string() != login and user["uid"].get_int32() != uid) {
             tmp.append(user);
@@ -209,48 +170,13 @@ void Gate::update_db(Variant data)
 
     tmp.append(data["user"]);
 
-    database["users"] = tmp;
+    user_data["users"] = tmp;
 
-    write_db(database);
-}
+    userdb.write(user_data);
 
-void Gate::lock_db_read()
-{
-    int fd = fileno(dbase);
+    tokendb.unlock();
+    userdb.unlock();
 
-    int status = flock(fd,LOCK_SH);
-
-    if (status!=0) {
-        stringstream ss;
-        ss<<" Failed to aquire read lock:"<<errno;
-        throw runtime_error(ss.str());
-    }
-}
-
-void Gate::lock_db_write()
-{
-    int fd = fileno(dbase);
-
-    int status = flock(fd,LOCK_EX);
-
-    if (status!=0) {
-        stringstream ss;
-        ss<<" Failed to aquire write lock:"<<errno;
-        throw runtime_error(ss.str());
-    }
-}
-
-void Gate::unlock_db()
-{
-    int fd = fileno(dbase);
-
-    int status = flock(fd,LOCK_UN);
-
-    if (status!=0) {
-        stringstream ss;
-        ss<<" Failed to release lock:"<<errno;
-        throw runtime_error(ss.str());
-    }
 }
 
 static Variant find_group(Variant groups, string name, int32_t gid)
@@ -286,13 +212,16 @@ static void append_member(Variant group,string name)
 Variant Gate::get_groups()
 {
     Variant groups;
-    Variant database = read_db();
 
+    userdb.lock_read();
+    Variant database = userdb.read();
+    userdb.unlock();
+/*
     if (!validate(database,Validator::Database)) {
         log(LOG_ERR,"Bad database\n");
         return groups;
     }
-
+*/
     groups = Variant::create_array(0);
 
     for (size_t n=0;n<database["users"].count();n++) {
@@ -337,13 +266,15 @@ Variant Gate::get_groups()
 Variant Gate::get_users()
 {
     Variant users;
-    Variant database = read_db();
-
+    userdb.lock_read();
+    Variant database = userdb.read();
+    userdb.unlock();
+/*
     if (!validate(database,Validator::Database)) {
         log(LOG_ERR,"Bad database\n");
         return users;
     }
-
+*/
     users = Variant::create_array(0);
 
     for (size_t n=0;n<database["users"].count();n++) {
@@ -515,6 +446,7 @@ bool Gate::validate(Variant data,Validator validator)
 
 void Gate::test_read()
 {
+    /*
     clog<<"reading...";
     lock_db_read();
     clog<<"locked...";
@@ -522,10 +454,12 @@ void Gate::test_read()
     clog<<"read...";
     unlock_db();
     clog<<"done"<<endl;
+    */
 }
 
 void Gate::test_write()
 {
+    /*
     clog<<"writting...";
     lock_db_write();
     clog<<"locked...";
@@ -533,4 +467,5 @@ void Gate::test_write()
     clog<<"write...";
     unlock_db();
     clog<<"done"<<endl;
+    */
 }

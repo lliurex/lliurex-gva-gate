@@ -20,11 +20,11 @@ using namespace edupals::variant;
 
 using namespace std;
 
-bool verbose = true;
+int debug_level = LOG_ERR;
 
 void log(int priority,string message)
 {
-    if (priority >= LOG_DEBUG and verbose==false) {
+    if (priority > debug_level ) {
         return;
     }
 
@@ -40,12 +40,13 @@ void log(int priority,string message)
 
 int main(int argc,char* argv[])
 {
-
     cmd::ArgumentParser parser;
     cmd::ParseResult result;
 
     parser.add_option(cmd::Option('h',"help",cmd::ArgumentType::None));
     parser.add_option(cmd::Option('v',"version",cmd::ArgumentType::None));
+    parser.add_option(cmd::Option('d',"debug",cmd::ArgumentType::Required));
+    parser.add_option(cmd::Option("verbose",cmd::ArgumentType::None));
 
     result=parser.parse(argc,argv);
 
@@ -53,7 +54,17 @@ int main(int argc,char* argv[])
         return 1;
     }
 
-    /*
+    for (cmd::Option o:result.options) {
+        if (o.short_name=='d') {
+            debug_level = std::stoi(o.value);
+        }
+
+        if (o.long_name == "verbose") {
+            debug_level = 7;
+        }
+    }
+
+/*
     for (cmd::Option o:result.options) {
         clog<<"+ "<<o.short_name<<endl;
     }
@@ -61,7 +72,7 @@ int main(int argc,char* argv[])
     for (string s:result.args) {
         clog<<"* "<<s<<endl;
     }
-    */
+*/
 
     string cmd;
 
@@ -71,16 +82,23 @@ int main(int argc,char* argv[])
 
     if (cmd == "create") {
         Gate gate(log);
-        gate.create_db();
+        if (!gate.exists_db()) {
+            gate.create_db();
+        }
+        else {
+            clog<<"database already exists"<<endl;
+        }
     }
 
     if (cmd == "machine-token") {
         Gate gate(log);
+        gate.open();
         cout<<gate.machine_token()<<endl;
     }
 
     if (cmd == "groups") {
         Gate gate(log);
+        gate.open();
         Variant groups = gate.get_groups();
         for (int n=0;n<groups.count();n++) {
             cout<<groups[n]["name"].get_string()<<":"<<groups[n]["gid"]<<":";
@@ -101,6 +119,7 @@ int main(int argc,char* argv[])
 
     if (cmd == "users") {
         Gate gate(log);
+        gate.open();
         Variant users = gate.get_users();
         for (int n=0;n<users.count();n++) {
             Variant passwd = users[n];
@@ -116,17 +135,8 @@ int main(int argc,char* argv[])
 
     if (cmd == "login" and argc>3) {
         Gate gate(log);
+        gate.open();
         gate.authenticate(argv[2],argv[3]);
-    }
-
-    if (cmd == "test-read") {
-        Gate gate(log);
-        gate.test_read();
-    }
-
-    if (cmd == "test-write") {
-        Gate gate(log);
-        gate.test_write();
     }
 
     if (cmd == "test-hash") {

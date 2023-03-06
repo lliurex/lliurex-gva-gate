@@ -66,7 +66,7 @@ void FileDB::create(DBFormat format,uint32_t mode)
 
 void FileDB::open()
 {
-    if (db != nullptr) {
+    if (db == nullptr) {
         db = fopen(path.c_str(),"r+");
     }
     else {

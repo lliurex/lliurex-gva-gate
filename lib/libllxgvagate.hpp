@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <functional>
 #include <string>
+#include <exception>
 
 #define LLX_GVA_GATE_DB "/tmp/llx-gva-gate.db"
 #define LLX_GVA_GATE_MAGIC  "LLX-GVA-GATE"
@@ -36,6 +37,8 @@
 namespace lliurex
 {
     enum class Validator {
+        UserDatabase,
+        TokenDatabase,
         Database,
         Users,
         User,
@@ -43,6 +46,29 @@ namespace lliurex
         Group,
         Authenticate
     };
+
+    namespace exception
+    {
+        class GateError: public std::exception
+        {
+            public:
+            std::string what_message;
+            std::string message;
+            uint32_t code;
+
+            GateError(std::string message,uint32_t code)
+            {
+                this->message = message;
+                this->code = code;
+                what_message = "[" + std::to_string(code) + "] " + message;
+            }
+
+            const char* what() const throw()
+            {
+                return what_message.c_str();
+            }
+        };
+    }
 
     class Gate
     {
@@ -69,9 +95,6 @@ namespace lliurex
         bool authenticate(std::string user,std::string password);
 
         bool validate(edupals::variant::Variant data,Validator validator);
-
-        void test_read();
-        void test_write();
 
         void set_logger(std::function<void(int priority,std::string message)> cb);
 

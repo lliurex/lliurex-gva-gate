@@ -179,6 +179,7 @@ void FileDB::write(edupals::variant::Variant data)
         //TODO: raise exception here?
     }
 
+    syncfs(fd);
 
 }
 

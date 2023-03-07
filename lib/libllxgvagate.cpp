@@ -59,6 +59,7 @@ bool Gate::exists_db()
 
 void Gate::open()
 {
+    //TODO: think a strategy
 
     if (!userdb.exists()) {
         log(LOG_ERR,"User database does not exists\n");
@@ -91,15 +92,15 @@ void Gate::open()
 
 void Gate::create_db()
 {
-    log(LOG_DEBUG,"Creating an empty database\n");
+    log(LOG_DEBUG,"Creating databases...\n");
 
     // checking db dir first
     const stdfs::path dbdir {LLX_GVA_GATE_DB_PATH};
     stdfs::create_directories(dbdir);
 
-
     // user db
     if (!userdb.exists()) {
+        log(LOG_DEBUG,"Creating user database\n");
         userdb.create(DBFormat::Json,S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR);
 
         userdb.open();
@@ -113,6 +114,7 @@ void Gate::create_db()
 
     // token db
     if (!tokendb.exists()) {
+        log(LOG_DEBUG,"Creating token database\n");
         tokendb.create(DBFormat::Json,S_IRUSR | S_IRGRP | S_IWUSR);
 
         tokendb.open();
@@ -126,7 +128,10 @@ void Gate::create_db()
 
     // shadow db
     if (!shadowdb.exists()) {
+        log(LOG_DEBUG,"Creating shadow database\n");
         shadowdb.create(DBFormat::Json,S_IRUSR | S_IRGRP | S_IWUSR);
+        log(LOG_WARNING,"Not implemented\n");
+        //TODO:
     }
 
 }
@@ -137,7 +142,10 @@ string Gate::machine_token()
 
     Variant data = tokendb.read();
 
-    //TODO: validate here
+    if (!validate(data,Validator::TokenDatabase)) {
+        log(LOG_ERR,"Bad token database\n");
+        throw exception::GateError("Bad token database\n",0);
+    }
 
     return data["machine-token"].get_string();
 }
@@ -147,13 +155,16 @@ void Gate::update_db(Variant data)
 
     AutoLock user_lock(LockMode::Write,&userdb);
     AutoLock token_lock(LockMode::Write,&tokendb);
-
+    std::this_thread::sleep_for(std::chrono::milliseconds(4000));
     Variant token_data = Variant::create_struct();
     token_data["machine-token"] = data["machine-token"];
     tokendb.write(token_data);
 
     Variant user_data = userdb.read();
-    //TODO: validate
+    if (!validate(user_data,Validator::UserDatabase)) {
+        log(LOG_ERR,"Bad user database\n");
+        throw exception::GateError("Bad user database\n",0);
+    }
 
     string login = data["user"]["login"].get_string();
     int32_t uid = data["user"]["uid"].get_int32();
@@ -214,12 +225,11 @@ Variant Gate::get_groups()
 
     Variant database = userdb.read();
 
-/*
-    if (!validate(database,Validator::Database)) {
-        log(LOG_ERR,"Bad database\n");
-        return groups;
+    if (!validate(database,Validator::UserDatabase)) {
+        log(LOG_ERR,"Bad user database\n");
+        throw exception::GateError("Bad user database\n",0);
     }
-*/
+
     groups = Variant::create_array(0);
 
     for (size_t n=0;n<database["users"].count();n++) {
@@ -268,12 +278,12 @@ Variant Gate::get_users()
     AutoLock lock(LockMode::Read,&userdb);
     Variant database = userdb.read();
 
-/*
-    if (!validate(database,Validator::Database)) {
-        log(LOG_ERR,"Bad database\n");
-        return users;
+    Variant user_data = userdb.read();
+    if (!validate(database,Validator::UserDatabase)) {
+        log(LOG_ERR,"Bad user database\n");
+        throw exception::GateError("Bad user database\n",0);
     }
-*/
+
     users = Variant::create_array(0);
 
     for (size_t n=0;n<database["users"].count();n++) {
@@ -305,21 +315,34 @@ bool Gate::authenticate(string user,string password)
 
     http::Response response;
 
-    response = client.post("authenticate",{ {"user",user},{"passwd",password}});
+    try {
+        response = client.post("authenticate",{ {"user",user},{"passwd",password}});
+    }
+    catch(std::exception& e) {
+        log(LOG_ERR,"Post error:" + string(e.what()));
+        throw exception::GateError("Post error:" + string(e.what()),3);
+    }
 
     if (response.status==200) {
-        Variant data = response.parse();
-        //clog<<data<<endl;
+        Variant data;
+        try {
+            data = response.parse();
+        }
+        catch(...) {
+            log(LOG_ERR,"Failed to parse server repsonse\n");
+            throw exception::GateError("Failed to parse server response",2);
+        }
 
         if (!validate(data,Validator::Authenticate)) {
             log(LOG_ERR,"Bad Authenticate response\n");
-            return false;
+            throw exception::GateError("Bad server response",1);
         }
 
         update_db(data);
     }
     else {
         log(LOG_WARNING,"Server returned status: " + std::to_string(response.status) + "\n");
+        return false;
     }
 
     return true;
@@ -367,16 +390,16 @@ bool Gate::validate(Variant data,Validator validator)
             return true;
         break;
 
-        case Validator::Database:
+        case Validator::UserDatabase:
             if (!data.is_struct()) {
                 return false;
             }
 
-            if (!data["magic"].is_string()) {
-                return false;
-            }
+            return validate(data["users"],Validator::Users);
+        break;
 
-            if (data["magic"].get_string()!=LLX_GVA_GATE_MAGIC) {
+        case Validator::TokenDatabase:
+            if (!data.is_struct()) {
                 return false;
             }
 
@@ -384,7 +407,7 @@ bool Gate::validate(Variant data,Validator validator)
                 return false;
             }
 
-            return validate(data["users"],Validator::Users);
+            return true;
         break;
 
         case Validator::Users:
@@ -444,30 +467,4 @@ bool Gate::validate(Variant data,Validator validator)
         default:
             return false;
     }
-}
-
-void Gate::test_read()
-{
-    /*
-    clog<<"reading...";
-    lock_db_read();
-    clog<<"locked...";
-    std::this_thread::sleep_for(std::chrono::milliseconds(4000));
-    clog<<"read...";
-    unlock_db();
-    clog<<"done"<<endl;
-    */
-}
-
-void Gate::test_write()
-{
-    /*
-    clog<<"writting...";
-    lock_db_write();
-    clog<<"locked...";
-    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
-    clog<<"write...";
-    unlock_db();
-    clog<<"done"<<endl;
-    */
 }

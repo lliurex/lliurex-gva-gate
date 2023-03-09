@@ -8,7 +8,6 @@
 #include <nss.h>
 #include <grp.h>
 #include <pwd.h>
-#include <systemd/sd-journal.h>
 
 #include <cstddef>
 #include <iostream>
@@ -71,6 +70,11 @@ namespace lliurex
 
     bool debug = false;
 
+}
+
+static void log(int priority,string message)
+{
+    syslog(priority,"%s",message.c_str());
 }
 
 static int push_string(string in,char** buffer, size_t* remain)
@@ -201,11 +205,43 @@ int update_passwd_db()
 {
     std::chrono::time_point<std::chrono::steady_clock> now = std::chrono::steady_clock::now();
 
-
     double delta = std::chrono::duration_cast<std::chrono::seconds>(now - lliurex::ptimestamp).count();
 
     if (delta < 2.0) {
+        syslog(LOG_INFO,"cached user database\n");
         return 0;
+    }
+
+    lliurex::Gate gate(log);
+
+    syslog(LOG_INFO,"updating user database\n");
+
+    if (!gate.open()) {
+        syslog(LOG_ERR,"Failed to open user database\n");
+        return -1;
+    }
+
+    try {
+        Variant users = gate.get_users();
+
+        lliurex::users.clear();
+
+        for (size_t n=0;n<users.count();n++) {
+            lliurex::Passwd pwd;
+
+            pwd.name = users[n]["name"].get_string();
+            pwd.uid = users[n]["uid"].get_int32(); //warning!
+            pwd.gid = users[n]["gid"].get_int32(); //warning!
+            pwd.dir = users[n]["dir"].get_string();
+            pwd.shell = users[n]["shell"].get_string();
+            pwd.gecos = users[n]["gecos"].get_string();
+
+            lliurex::users.push_back(pwd);
+        }
+
+    }
+    catch (std::exception& e) {
+        return -1;
     }
 
     lliurex::ptimestamp = now;
@@ -321,6 +357,7 @@ nss_status _nss_gvagate_getgrnam_r(const char* name, struct group* result, char 
 
 enum nss_status _nss_gvagate_setpwent(int stayopen)
 {
+    syslog(LOG_INFO,"%s\n",__func__);
     std::lock_guard<std::mutex> lock(lliurex::pmtx);
 
     lliurex::pindex = -1;
@@ -342,13 +379,15 @@ enum nss_status _nss_gvagate_endpwent(void)
 
 enum nss_status _nss_gvagate_getpwent_r(struct passwd* result, char* buffer, size_t buflen, int* errnop)
 {
+    syslog(LOG_INFO,"%s\n",__func__);
     std::lock_guard<std::mutex> lock(lliurex::pmtx);
 
     if (lliurex::pindex == lliurex::users.size()) {
         return NSS_STATUS_NOTFOUND;
     }
 
-    lliurex::Passwd& pwd = lliurex::users[lliurex::index];
+    lliurex::Passwd& pwd = lliurex::users[lliurex::pindex];
+    syslog(LOG_DEBUG,"* %s\n",pwd.name.c_str());
 
     int status = push_passwd(pwd,result,buffer,buflen);
     if (status == -1) {
@@ -363,10 +402,40 @@ enum nss_status _nss_gvagate_getpwent_r(struct passwd* result, char* buffer, siz
 
 enum nss_status _nss_gvagate_getpwuid_r(uid_t uid, struct passwd* result, char* buffer, size_t buflen, int* errnop)
 {
-    return NSS_STATUS_SUCCESS;
+    std::lock_guard<std::mutex> lock(lliurex::pmtx);
+
+    for (lliurex::Passwd& pwd : lliurex::users) {
+
+        if (pwd.uid == uid) {
+
+            int status = push_passwd(pwd,result,buffer,buflen);
+            if (status == -1) {
+                *errnop = ERANGE;
+                return NSS_STATUS_TRYAGAIN;
+            }
+            return NSS_STATUS_SUCCESS;
+        }
+    }
+
+    return NSS_STATUS_NOTFOUND;
 }
 
 enum nss_status _nss_gvagate_getpwnam_r(const char* name, struct passwd* result, char* buffer, size_t buflen, int* errnop)
 {
-    return NSS_STATUS_SUCCESS;
+    std::lock_guard<std::mutex> lock(lliurex::pmtx);
+
+    for (lliurex::Passwd& pwd : lliurex::users) {
+
+        if (pwd.name.compare(name) == 0) {
+
+            int status = push_passwd(pwd,result,buffer,buflen);
+            if (status == -1) {
+                *errnop = ERANGE;
+                return NSS_STATUS_TRYAGAIN;
+            }
+            return NSS_STATUS_SUCCESS;
+        }
+    }
+
+    return NSS_STATUS_NOTFOUND;
 }

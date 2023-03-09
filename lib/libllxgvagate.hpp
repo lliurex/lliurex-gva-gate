@@ -82,7 +82,7 @@ namespace lliurex
         virtual ~Gate();
 
         bool exists_db();
-        void open();
+        bool open();
 
         void create_db();
         std::string machine_token();

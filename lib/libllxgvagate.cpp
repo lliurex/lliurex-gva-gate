@@ -57,16 +57,19 @@ bool Gate::exists_db()
     return status;
 }
 
-void Gate::open()
+bool Gate::open()
 {
     //TODO: think a strategy
+    bool user = false;
+    bool token = false;
+    bool shadow = false;
 
     if (!userdb.exists()) {
         log(LOG_ERR,"User database does not exists\n");
     }
     else {
         if (!userdb.is_open()) {
-            userdb.open();
+            user = userdb.open();
         }
     }
 
@@ -75,7 +78,7 @@ void Gate::open()
     }
     else {
         if (!tokendb.is_open()) {
-            tokendb.open();
+            token = tokendb.open();
         }
     }
 
@@ -84,10 +87,11 @@ void Gate::open()
     }
     else {
         if (!shadowdb.is_open()) {
-            shadowdb.open();
+            shadow = shadowdb.open();
         }
     }
 
+    return user and token; //we don't care about shadow right now
 }
 
 void Gate::create_db()

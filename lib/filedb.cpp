@@ -64,14 +64,13 @@ void FileDB::create(DBFormat format,uint32_t mode)
     close();
 }
 
-void FileDB::open()
+bool FileDB::open()
 {
     if (db == nullptr) {
         db = fopen(path.c_str(),"r+");
     }
-    else {
-        //TODO
-    }
+
+    return (db != nullptr);
 }
 
 void FileDB::close()

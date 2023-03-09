@@ -35,7 +35,7 @@ namespace lliurex
         bool is_open();
 
         void create(DBFormat format, uint32_t mode = 775);
-        void open();
+        bool open();
         void close();
 
         void lock_read();

@@ -179,24 +179,48 @@ static int push_passwd(lliurex::Passwd& source, struct passwd* result, char* buf
 
 int update_db()
 {
-    lliurex::Gate gate;
-    Variant groups = gate.get_groups();
+    std::chrono::time_point<std::chrono::steady_clock> now = std::chrono::steady_clock::now();
 
-    lliurex::groups.clear();
-    for (int n=0;n<groups.count();n++) {
-        lliurex::Group grp;
+    double delta = std::chrono::duration_cast<std::chrono::seconds>(now - lliurex::timestamp).count();
 
-        grp.name = groups[n]["name"].get_string();
-        grp.gid = (uint64_t)groups[n]["gid"].to_int64();
-
-        Variant members = groups[n]["members"];
-
-        for (int m=0;m<members.count();m++) {
-            grp.members.push_back(members[m].get_string());
-        }
-
-        lliurex::groups.push_back(grp);
+    if (delta < 2.0) {
+        syslog(LOG_INFO,"cached group database\n");
+        return 0;
     }
+
+    lliurex::Gate gate(log);
+
+    syslog(LOG_INFO,"updating group database\n");
+
+    if (!gate.open()) {
+        syslog(LOG_ERR,"Failed to open group database\n");
+        return -1;
+    }
+
+    try {
+        Variant groups = gate.get_groups();
+
+        lliurex::groups.clear();
+        for (int n=0;n<groups.count();n++) {
+            lliurex::Group grp;
+
+            grp.name = groups[n]["name"].get_string();
+            grp.gid = (uint64_t)groups[n]["gid"].to_int64();
+
+            Variant members = groups[n]["members"];
+
+            for (int m=0;m<members.count();m++) {
+                grp.members.push_back(members[m].get_string());
+            }
+
+            lliurex::groups.push_back(grp);
+        }
+    }
+    catch (std::exception& e) {
+        return -1;
+    }
+
+    lliurex::timestamp = now;
 
     return 0;
 }
@@ -254,6 +278,7 @@ int update_passwd_db()
 */
 nss_status _nss_gvagate_setgrent(void)
 {
+    syslog(LOG_INFO,"%s\n",__func__);
     std::lock_guard<std::mutex> lock(lliurex::mtx);
 
     lliurex::index = -1;

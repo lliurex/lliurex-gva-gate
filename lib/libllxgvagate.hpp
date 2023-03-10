@@ -16,15 +16,11 @@
 #include <string>
 #include <exception>
 
-#define LLX_GVA_GATE_DB "/tmp/llx-gva-gate.db"
-#define LLX_GVA_GATE_MAGIC  "LLX-GVA-GATE"
-
 #define LLX_GVA_GATE_DB_PATH "/tmp/llx-gva-gate/"
 
 #define LLX_GVA_GATE_USER_DB_MAGIC "LLX-USERDB"
 #define LLX_GVA_GATE_USER_DB_FILE "user.db"
 #define LLX_GVA_GATE_USER_DB_PATH LLX_GVA_GATE_DB_PATH LLX_GVA_GATE_USER_DB_FILE
-
 
 #define LLX_GVA_GATE_TOKEN_DB_MAGIC "LLX-TOKENDB"
 #define LLX_GVA_GATE_TOKEN_DB_FILE "token.db"
@@ -39,6 +35,7 @@ namespace lliurex
     enum class Validator {
         UserDatabase,
         TokenDatabase,
+        ShadowDatabase,
         Database,
         Users,
         User,
@@ -88,6 +85,8 @@ namespace lliurex
         std::string machine_token();
 
         void update_db(edupals::variant::Variant data);
+        void update_shadow_db(std::string user,std::string password);
+        int lookup_password(std::string user,std::string password);
 
         edupals::variant::Variant get_groups();
         edupals::variant::Variant get_users();

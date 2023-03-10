@@ -166,7 +166,6 @@ void Gate::update_db(Variant data)
 
     AutoLock user_lock(LockMode::Write,&userdb);
     AutoLock token_lock(LockMode::Write,&tokendb);
-    AutoLock shadow_lock(LockMode::Write,&shadowdb);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(4000));
     Variant token_data = Variant::create_struct();
@@ -228,6 +227,38 @@ static void append_member(Variant group,string name)
     if (!found) {
         group.append(name);
     }
+}
+
+void Gate::update_shadow_db(string user,string password)
+{
+    AutoLock shadow_lock(LockMode::Write,&shadowdb);
+
+}
+
+int Gate::lookup_password(string user,string password)
+{
+    AutoLock shadow_lock(LockMode::Read,&shadowdb);
+    int status = 0;
+    Variant database = shadowdb.read();
+
+    //Validate here
+
+    for (size_t n=0;n<database["passwords"].count();n++) {
+        Variant shadow = database["passwords"][n];
+
+        if (shadow["name"].get_string() == user) {
+            //TODO: improve this!
+            string stored_hash = shadow["hash"].get_string();
+            string computed_hash = hash(user,password);
+
+            if (stored_hash == computed_hash) {
+                status = 1;
+                break;
+            }
+        }
+    }
+
+    return status;
 }
 
 Variant Gate::get_groups()

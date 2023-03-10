@@ -96,6 +96,7 @@ bool Gate::open()
 
 void Gate::create_db()
 {
+    //TODO: handle exceptions
     log(LOG_DEBUG,"Creating databases...\n");
 
     // checking db dir first
@@ -134,8 +135,14 @@ void Gate::create_db()
     if (!shadowdb.exists()) {
         log(LOG_DEBUG,"Creating shadow database\n");
         shadowdb.create(DBFormat::Json,S_IRUSR | S_IRGRP | S_IWUSR);
-        log(LOG_WARNING,"Not implemented\n");
-        //TODO:
+
+        shadowdb.open();
+
+        shadowdb.lock_write();
+        Variant shadow_data = Variant::create_struct();
+        shadow_data["passwords"] = Variant::create_array(0);
+        shadowdb.write(shadow_data);
+        shadowdb.unlock();
     }
 
 }
@@ -159,6 +166,8 @@ void Gate::update_db(Variant data)
 
     AutoLock user_lock(LockMode::Write,&userdb);
     AutoLock token_lock(LockMode::Write,&tokendb);
+    AutoLock shadow_lock(LockMode::Write,&shadowdb);
+
     std::this_thread::sleep_for(std::chrono::milliseconds(4000));
     Variant token_data = Variant::create_struct();
     token_data["machine-token"] = data["machine-token"];

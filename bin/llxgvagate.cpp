@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "libllxgvagate.hpp"
-#include "hash.hpp"
 
 #include <variant.hpp>
 #include <console.hpp>
@@ -14,7 +13,6 @@
 #include <chrono>
 
 using namespace lliurex;
-using namespace lliurex::hash;
 
 using namespace edupals;
 using namespace edupals::variant;

@@ -472,3 +472,10 @@ bool Gate::validate(Variant data,Validator validator)
             return false;
     }
 }
+
+string Gate::hash(string username,string password)
+{
+    char* data = crypt(password.c_str(),"$6$llxgvagate$"); //TODO: improve salt
+
+    return string(data);
+}

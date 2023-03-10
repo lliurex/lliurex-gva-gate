@@ -154,7 +154,10 @@ int main(int argc,char* argv[])
     if (cmd == "test-hash") {
         string input = "quique";
         clog<<"input:"<<input<<endl;
-        clog<<lliurex::hash::sha1(input)<<endl;
+
+        Gate gate;
+
+        clog<<gate.hash("quique","secret")<<endl;
     }
 
     return 0;

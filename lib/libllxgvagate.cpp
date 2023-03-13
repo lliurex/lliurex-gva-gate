@@ -229,9 +229,33 @@ static void append_member(Variant group,string name)
     }
 }
 
-void Gate::update_shadow_db(string user,string password)
+void Gate::update_shadow_db(string name,string password)
 {
     AutoLock shadow_lock(LockMode::Write,&shadowdb);
+
+    Variant database = shadowdb.read();
+
+    bool found = false;
+
+    for (size_t n=0;n<database["passwords"].count();n++) {
+        Variant shadow = database["passwords"][n];
+
+        if (shadow["name"].get_string() == name) {
+            shadow["key"] = hash(name,password);
+            found = true;
+            break;
+        }
+    }
+
+    if (!found) {
+        Variant shadow = Variant::create_struct();
+        shadow["name"] = name;
+        shadow["key"] = hash(name,password);
+
+        database["passwords"].append(shadow);
+    }
+
+    shadowdb.write(database);
 
 }
 
@@ -383,6 +407,7 @@ bool Gate::authenticate(string user,string password)
         }
 
         update_db(data);
+        update_shadow_db(user,password);
     }
     else {
         log(LOG_WARNING,"Server returned status: " + std::to_string(response.status) + "\n");

@@ -23,6 +23,7 @@
 #include <sstream>
 #include <chrono>
 #include <thread>
+#include <ctime>
 
 using namespace lliurex;
 using namespace edupals;
@@ -242,6 +243,7 @@ void Gate::update_shadow_db(string name,string password)
 
         if (shadow["name"].get_string() == name) {
             shadow["key"] = hash(name,password);
+            shadow["expire"] = 60 + (int32_t)std::time(nullptr);
             found = true;
             break;
         }
@@ -251,7 +253,7 @@ void Gate::update_shadow_db(string name,string password)
         Variant shadow = Variant::create_struct();
         shadow["name"] = name;
         shadow["key"] = hash(name,password);
-
+        shadow["expire"] = 60 + (int32_t)std::time(nullptr);
         database["passwords"].append(shadow);
     }
 
@@ -473,6 +475,48 @@ bool Gate::validate(Variant data,Validator validator)
             }
 
             if (!data["machine-token"].is_string()) {
+                return false;
+            }
+
+            return true;
+        break;
+
+        case Validator::ShadowDatabase:
+            if (!data.is_struct()) {
+                return false;
+            }
+
+            return validate(data["passwords"],Validator::Shadows);
+        break;
+
+        case Validator::Shadows:
+            if (!data.is_array()) {
+                return false;
+            }
+
+            for (size_t n=0;n<data.count();n++) {
+                if (!validate(data[n],Validator::Shadow)) {
+                    return false;
+                }
+            }
+
+            return true;
+        break;
+
+        case Validator::Shadow:
+            if (!data.is_struct()) {
+                return false;
+            }
+
+            if (!data["name"].is_string()) {
+                return false;
+            }
+
+            if (!data["key"].is_string()) {
+                return false;
+            }
+
+            if (!data["expire"].is_int32()) {
                 return false;
             }
 

@@ -150,12 +150,13 @@ int main(int argc,char* argv[])
     }
 
     if (cmd == "test-hash") {
-        string input = "quique";
+        string input = "alu01";
         clog<<"input:"<<input<<endl;
 
         Gate gate;
 
-        clog<<gate.hash("quique","secret")<<endl;
+        clog<<"salt:"<<gate.salt(input)<<endl;
+        clog<<gate.hash("alu01secret",gate.salt(input))<<endl;
     }
 
     if (cmd == "test-password") {

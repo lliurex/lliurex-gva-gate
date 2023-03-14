@@ -105,7 +105,8 @@ namespace lliurex
 
         void set_logger(std::function<void(int priority,std::string message)> cb);
 
-        std::string hash(std::string username,std::string password);
+        std::string salt(std::string username);
+        std::string hash(std::string password,std::string salt);
         protected:
 
         void log(int priority, std::string message);

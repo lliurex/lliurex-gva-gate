@@ -242,7 +242,7 @@ void Gate::update_shadow_db(string name,string password)
         Variant shadow = database["passwords"][n];
 
         if (shadow["name"].get_string() == name) {
-            shadow["key"] = hash(name,password);
+            shadow["key"] = hash(password,salt(name));
             shadow["expire"] = 60 + (int32_t)std::time(nullptr);
             found = true;
             break;
@@ -252,13 +252,30 @@ void Gate::update_shadow_db(string name,string password)
     if (!found) {
         Variant shadow = Variant::create_struct();
         shadow["name"] = name;
-        shadow["key"] = hash(name,password);
+        shadow["key"] = hash(password,salt(name));
         shadow["expire"] = 60 + (int32_t)std::time(nullptr);
         database["passwords"].append(shadow);
     }
 
     shadowdb.write(database);
 
+}
+
+static string extract_salt(string key)
+{
+    vector<int> dollar;
+
+    for (size_t n=0;n<key.size();n++) {
+        if (key[n] == '$') {
+            dollar.push_back(n);
+        }
+    }
+
+    if (dollar.size() > 2) {
+        return key.substr(dollar[1]+1,dollar[2]-dollar[1]-1);
+    }
+
+    return "";
 }
 
 int Gate::lookup_password(string user,string password)
@@ -273,9 +290,9 @@ int Gate::lookup_password(string user,string password)
         Variant shadow = database["passwords"][n];
 
         if (shadow["name"].get_string() == user) {
-            //TODO: improve this!
             string stored_hash = shadow["key"].get_string();
-            string computed_hash = hash(user,password);
+            string stored_salt = extract_salt(stored_hash);
+            string computed_hash = hash(password,stored_salt);
 
             if (stored_hash == computed_hash) {
                 std::time_t now = std::time(nullptr);
@@ -596,9 +613,27 @@ bool Gate::validate(Variant data,Validator validator)
     }
 }
 
-string Gate::hash(string username,string password)
+string Gate::salt(string username)
 {
-    char* data = crypt(password.c_str(),"$6$llxgvagate$"); //TODO: improve salt
+    string value;
+    const int range = 'z' - 'A';
+    const int start = 'A';
+    int32_t rnd = (int32_t)std::time(nullptr);
+
+    for (size_t n=0;n<10;n++) {
+        int m = n % username.size();
+        int32_t c = username[m] + rnd;
+        c = c % range;
+        value.push_back(start+c);
+    }
+
+    return value;
+}
+
+string Gate::hash(string password,string salt)
+{
+    salt = "$6$" + salt + "$";
+    char* data = crypt(password.c_str(),salt.c_str());
 
     return string(data);
 }

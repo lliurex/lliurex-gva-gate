@@ -79,7 +79,6 @@ namespace lliurex
     {
         public:
 
-
         Gate();
         Gate(std::function<void(int priority,std::string message)> cb);
 
@@ -87,7 +86,7 @@ namespace lliurex
         virtual ~Gate();
 
         bool exists_db();
-        bool open();
+        bool open(bool only_userdb = false);
 
         void create_db();
         std::string machine_token();

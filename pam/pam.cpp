@@ -27,12 +27,6 @@ PAM_EXTERN int pam_sm_setcred( pam_handle_t* pamh, int flags, int argc, const ch
     return PAM_SUCCESS;
 }
 
-PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t* pamh, int flags, int argc, const char** argv)
-{
-    syslog(LOG_DEBUG,"lliurex-gva-gate::pam_sm_acct_mgmt\n");
-    return PAM_SUCCESS;
-}
-
 PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, const char** argv )
 {
     syslog(LOG_DEBUG,"lliurex-gva-gate::pam_sm_authenticate\n");
@@ -89,6 +83,23 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
         syslog(LOG_ERR,"%s\n",e.what());
         return PAM_AUTH_ERR;
     }
+
+    return PAM_SUCCESS;
+}
+
+PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const char **argv)
+{
+    int status;
+    const char* user;
+
+    status = pam_get_user(pamh, &user, NULL);
+
+    if (status != PAM_SUCCESS) {
+        syslog(LOG_ERR,"cannot retrieve user\n");
+        return PAM_AUTH_ERR;
+    }
+
+    syslog(LOG_INFO,"Granting access to %s\n",user);
 
     return PAM_SUCCESS;
 }

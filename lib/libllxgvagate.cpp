@@ -58,7 +58,7 @@ bool Gate::exists_db()
     return status;
 }
 
-bool Gate::open()
+bool Gate::open(bool only_userdb)
 {
     //TODO: think a strategy
     bool user = false;
@@ -70,7 +70,9 @@ bool Gate::open()
     }
     else {
         if (!userdb.is_open()) {
-            user = userdb.open();
+            log(LOG_INFO,"Opening userdb...\n");
+            user = userdb.open(only_userdb);
+            log(LOG_INFO,"user:"+std::to_string(user)+"\n");
         }
     }
 
@@ -92,7 +94,13 @@ bool Gate::open()
         }
     }
 
-    return user and token; //we don't care about shadow right now
+    if (only_userdb) {
+        log(LOG_INFO,"Granted access to userdb\n");
+        return user;
+    }
+    else {
+        return user and token and shadow;
+    }
 }
 
 void Gate::create_db()

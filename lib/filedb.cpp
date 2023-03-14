@@ -64,10 +64,13 @@ void FileDB::create(DBFormat format,uint32_t mode)
     close();
 }
 
-bool FileDB::open()
+bool FileDB::open(bool read_only)
 {
     if (db == nullptr) {
-        db = fopen(path.c_str(),"r+");
+        const char* rw = "r+";
+        const char* ro = "r";
+        const char* options = (read_only) ? ro : rw;
+        db = fopen(path.c_str(),options);
     }
 
     return (db != nullptr);

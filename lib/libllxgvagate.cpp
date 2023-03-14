@@ -264,7 +264,7 @@ void Gate::update_shadow_db(string name,string password)
 int Gate::lookup_password(string user,string password)
 {
     AutoLock shadow_lock(LockMode::Read,&shadowdb);
-    int status = 0;
+    int status = NotFound;
     Variant database = shadowdb.read();
 
     //Validate here
@@ -274,11 +274,25 @@ int Gate::lookup_password(string user,string password)
 
         if (shadow["name"].get_string() == user) {
             //TODO: improve this!
-            string stored_hash = shadow["hash"].get_string();
+            string stored_hash = shadow["key"].get_string();
             string computed_hash = hash(user,password);
 
             if (stored_hash == computed_hash) {
-                status = 1;
+                std::time_t now = std::time(nullptr);
+                int32_t expire = shadow["expire"].get_int32();
+
+                if (now<expire) {
+                    status = Found;
+                    break;
+                }
+                else {
+                    status = ExpiredPassword;
+                    break;
+                }
+
+            }
+            else {
+                status = InvalidPassword;
                 break;
             }
         }

@@ -45,6 +45,13 @@ namespace lliurex
         Authenticate
     };
 
+    enum LookupStatus {
+        Found,
+        NotFound,
+        InvalidPassword,
+        ExpiredPassword
+    };
+
     namespace exception
     {
         class GateError: public std::exception

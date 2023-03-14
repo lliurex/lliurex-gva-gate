@@ -158,5 +158,13 @@ int main(int argc,char* argv[])
         clog<<gate.hash("quique","secret")<<endl;
     }
 
+    if (cmd == "test-password") {
+        Gate gate(log);
+        gate.open();
+
+        int status = gate.lookup_password(argv[2],argv[3]);
+        cout<<"status:"<<status<<endl;
+    }
+
     return 0;
 }

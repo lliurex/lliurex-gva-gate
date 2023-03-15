@@ -21,6 +21,11 @@ static void log(int priority,string message)
     syslog(priority,"%s",message.c_str());
 }
 
+static void cleanup (pam_handle_t* pamh,void* data,int error_status)
+{
+    free(data);
+}
+
 PAM_EXTERN int pam_sm_setcred( pam_handle_t* pamh, int flags, int argc, const char** argv )
 {
     syslog(LOG_DEBUG,"lliurex-gva-gate::pam_sm_setcred\n");
@@ -71,12 +76,35 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
         gate.open();
 
         if (gate.authenticate(string(user),string(password))) {
-            syslog(LOG_INFO,"User authenticated\n");
+            syslog(LOG_INFO,"User %s authenticated\n",user);
             return PAM_SUCCESS;
         }
         else {
-            syslog(LOG_ERR,"Failed to login\n");
-            return PAM_AUTH_ERR;
+            syslog(LOG_INFO,"Trying with local look-up\n");
+
+            status = gate.lookup_password(user,password);
+
+            void* data = malloc(sizeof(int));
+            *((int*)data) = status;
+            pam_set_data(pamh,"local_auth_status",data,cleanup);
+
+            switch (status) {
+                case lliurex::Found:
+                case lliurex::ExpiredPassword:
+                    return PAM_SUCCESS;
+                break;
+
+                case lliurex::NotFound:
+                    return PAM_USER_UNKNOWN;
+                break;
+
+                case lliurex::InvalidPassword:
+                    return PAM_AUTH_ERR;
+                break;
+
+                default:
+                    return PAM_AUTH_ERR;
+            }
         }
     }
     catch(std::exception& e) {
@@ -91,6 +119,7 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
 {
     int status;
     const char* user;
+    const void* data;
 
     status = pam_get_user(pamh, &user, NULL);
 
@@ -99,8 +128,17 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
         return PAM_AUTH_ERR;
     }
 
-    syslog(LOG_INFO,"Granting access to %s\n",user);
+    status = pam_get_data(pamh,"local_auth_status",&data);
 
+    if (status == PAM_SUCCESS) {
+        status = *((int *)data);
+        syslog(LOG_INFO,"Status:%d\n",status);
+
+        if (status == lliurex::ExpiredPassword) {
+            return PAM_ACCT_EXPIRED;
+        }
+    }
+    syslog(LOG_INFO,"Granting access to %s\n",user);
     return PAM_SUCCESS;
 }
 

@@ -70,9 +70,7 @@ bool Gate::open(bool only_userdb)
     }
     else {
         if (!userdb.is_open()) {
-            log(LOG_INFO,"Opening userdb...\n");
             user = userdb.open(only_userdb);
-            log(LOG_INFO,"user:"+std::to_string(user)+"\n");
         }
     }
 
@@ -95,7 +93,6 @@ bool Gate::open(bool only_userdb)
     }
 
     if (only_userdb) {
-        log(LOG_INFO,"Granted access to userdb\n");
         return user;
     }
     else {
@@ -429,26 +426,32 @@ bool Gate::authenticate(string user,string password)
     }
     catch(std::exception& e) {
         log(LOG_ERR,"Post error:" + string(e.what()));
-        throw exception::GateError("Post error:" + string(e.what()),3);
+        return false;
     }
 
-    if (response.status==200) {
+    if (response.status == 200) {
         Variant data;
         try {
             data = response.parse();
         }
-        catch(...) {
+        catch(std::exception& e) {
             log(LOG_ERR,"Failed to parse server repsonse\n");
-            throw exception::GateError("Failed to parse server response",2);
+            return false;
         }
 
         if (!validate(data,Validator::Authenticate)) {
             log(LOG_ERR,"Bad Authenticate response\n");
-            throw exception::GateError("Bad server response",1);
+            return false;
         }
 
-        update_db(data);
-        update_shadow_db(user,password);
+        try {
+            update_db(data);
+            update_shadow_db(user,password);
+        }
+        catch(std::exception& e) {
+            log(LOG_ERR,e.what());
+            return false;
+        }
     }
     else {
         log(LOG_WARNING,"Server returned status: " + std::to_string(response.status) + "\n");

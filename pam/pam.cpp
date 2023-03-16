@@ -28,13 +28,31 @@ static void cleanup (pam_handle_t* pamh,void* data,int error_status)
 
 PAM_EXTERN int pam_sm_setcred( pam_handle_t* pamh, int flags, int argc, const char** argv )
 {
-    syslog(LOG_DEBUG,"lliurex-gva-gate::pam_sm_setcred\n");
+    pam_syslog(pamh,LOG_DEBUG,"pam_sm_setcred(%d)\n",flags);
+
+        if(flags & PAM_ESTABLISH_CRED) {
+            pam_syslog(pamh,LOG_DEBUG,"PAM_ESTABLISH_CRED\n");
+        }
+
+        if(flags & PAM_DELETE_CRED) {
+            pam_syslog(pamh,LOG_DEBUG,"PAM_DELETE_CRED\n");
+        }
+
+        if (flags & PAM_REINITIALIZE_CRED) {
+            pam_syslog(pamh,LOG_DEBUG,"PAM_REINITIALIZE_CRED\n");
+        }
+
+        if (flags & PAM_REFRESH_CRED) {
+            pam_syslog(pamh,LOG_DEBUG,"PAM_REFRESH_CRED\n");
+        }
+
+
     return PAM_SUCCESS;
 }
 
 PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, const char** argv )
 {
-    syslog(LOG_DEBUG,"lliurex-gva-gate::pam_sm_authenticate\n");
+    pam_syslog(pamh,LOG_DEBUG,"pam_sm_authenticate\n");
 
     int status;
     const char* service;
@@ -45,42 +63,42 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
     status = pam_get_item(pamh, PAM_SERVICE, (const void**)(const void*)&service);
 
     if (status != PAM_SUCCESS) {
-        syslog(LOG_ERR,"cannot retrieve service\n");
+        pam_syslog(pamh,LOG_ERR,"cannot retrieve service\n");
         return PAM_AUTH_ERR;
     }
 
     status = pam_get_user(pamh, &user, NULL);
 
     if (status != PAM_SUCCESS) {
-        syslog(LOG_ERR,"cannot retrieve user\n");
+        pam_syslog(pamh,LOG_ERR,"cannot retrieve user\n");
         return PAM_AUTH_ERR;
     }
 
     status = pam_get_item(pamh, PAM_TTY,(const void **)(const void *)&tty);
 
     if (status != PAM_SUCCESS) {
-        syslog(LOG_ERR,"cannot retrieve tty\n");
+        pam_syslog(pamh,LOG_ERR,"cannot retrieve tty\n");
         return PAM_AUTH_ERR;
     }
 
     status = pam_get_authtok(pamh, PAM_AUTHTOK, &password , NULL);
 
     if (status != PAM_SUCCESS) {
-        syslog(LOG_ERR,"cannot retrieve password\n");
+        pam_syslog(pamh,LOG_ERR,"cannot retrieve password\n");
         return PAM_AUTH_ERR;
     }
 
     try {
-        syslog(LOG_INFO,"user:%s  tty:%s  service:%s\n",user,tty,service);
+        pam_syslog(pamh,LOG_INFO,"user:%s  tty:%s  service:%s\n",user,tty,service);
         Gate gate(log);
         gate.open();
 
         if (gate.authenticate(string(user),string(password))) {
-            syslog(LOG_INFO,"User %s authenticated\n",user);
+            pam_syslog(pamh,LOG_INFO,"User %s authenticated\n",user);
             return PAM_SUCCESS;
         }
         else {
-            syslog(LOG_INFO,"Trying with local look-up\n");
+            pam_syslog(pamh,LOG_INFO,"Trying with local look-up\n");
 
             status = gate.lookup_password(user,password);
 
@@ -117,6 +135,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
 
 PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const char **argv)
 {
+    pam_syslog(pamh,LOG_DEBUG,"pam_sm_acct_mgmt\n");
     int status;
     const char* user;
     const void* data;
@@ -124,7 +143,7 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
     status = pam_get_user(pamh, &user, NULL);
 
     if (status != PAM_SUCCESS) {
-        syslog(LOG_ERR,"cannot retrieve user\n");
+        pam_syslog(pamh,LOG_ERR,"cannot retrieve user\n");
         return PAM_AUTH_ERR;
     }
 
@@ -132,24 +151,25 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
 
     if (status == PAM_SUCCESS) {
         status = *((int *)data);
-        syslog(LOG_INFO,"Status:%d\n",status);
+        pam_syslog(pamh,LOG_INFO,"Status:%d\n",status);
 
         if (status == lliurex::ExpiredPassword) {
+            pam_syslog(pamh,LOG_INFO,"Password for %s has expired\n",user);
             return PAM_ACCT_EXPIRED;
         }
     }
-    syslog(LOG_INFO,"Granting access to %s\n",user);
+    pam_syslog(pamh,LOG_INFO,"Granting access to %s\n",user);
     return PAM_SUCCESS;
 }
 
 PAM_EXTERN int pam_sm_open_session(pam_handle_t *pamh, int flags, int argc, const char **argv)
 {
-    syslog(LOG_DEBUG,"lliurex-gva-gate::pam_sm_open_session\n");
+    pam_syslog(pamh,LOG_DEBUG,"lliurex-gva-gate::pam_sm_open_session\n");
     return PAM_SUCCESS;
 }
 
 PAM_EXTERN int pam_sm_close_session(pam_handle_t *pamh, int flags, int argc, const char **argv)
 {
-    syslog(LOG_DEBUG,"lliurex-gva-gate::pam_sm_close_session\n");
+    pam_syslog(pamh,LOG_DEBUG,"lliurex-gva-gate::pam_sm_close_session\n");
     return PAM_SUCCESS;
 }

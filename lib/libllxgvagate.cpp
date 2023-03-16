@@ -38,7 +38,7 @@ Gate::Gate() : Gate(nullptr)
 
 Gate::Gate(function<void(int priority,string message)> cb) : log_cb(cb)
 {
-    log(LOG_DEBUG,"Gate constructor\n");
+    //log(LOG_DEBUG,"Gate constructor\n");
 
     userdb = FileDB(LLX_GVA_GATE_USER_DB_PATH,LLX_GVA_GATE_USER_DB_MAGIC);
     tokendb = FileDB(LLX_GVA_GATE_TOKEN_DB_PATH,LLX_GVA_GATE_TOKEN_DB_MAGIC);
@@ -48,7 +48,7 @@ Gate::Gate(function<void(int priority,string message)> cb) : log_cb(cb)
 
 Gate::~Gate()
 {
-    log(LOG_DEBUG,"Gate destructor\n");
+    //log(LOG_DEBUG,"Gate destructor\n");
 }
 
 bool Gate::exists_db()

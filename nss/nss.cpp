@@ -184,13 +184,13 @@ int update_db()
     double delta = std::chrono::duration_cast<std::chrono::seconds>(now - lliurex::timestamp).count();
 
     if (delta < 2.0) {
-        syslog(LOG_INFO,"cached group database\n");
+        //syslog(LOG_INFO,"cached group database\n");
         return 0;
     }
 
     lliurex::Gate gate(log);
 
-    syslog(LOG_INFO,"updating group database\n");
+    //syslog(LOG_INFO,"updating group database\n");
 
     if (!gate.open(true)) {
         syslog(LOG_ERR,"Failed to open group database\n");
@@ -232,13 +232,13 @@ int update_passwd_db()
     double delta = std::chrono::duration_cast<std::chrono::seconds>(now - lliurex::ptimestamp).count();
 
     if (delta < 2.0) {
-        syslog(LOG_INFO,"cached user database\n");
+        //syslog(LOG_INFO,"cached user database\n");
         return 0;
     }
 
     lliurex::Gate gate(log);
 
-    syslog(LOG_INFO,"updating user database\n");
+    //syslog(LOG_INFO,"updating user database\n");
 
     if (!gate.open(true)) {
         syslog(LOG_ERR,"Failed to open user database\n");
@@ -278,7 +278,7 @@ int update_passwd_db()
 */
 nss_status _nss_gvagate_setgrent(void)
 {
-    syslog(LOG_INFO,"%s\n",__func__);
+    //syslog(LOG_INFO,"%s\n",__func__);
     std::lock_guard<std::mutex> lock(lliurex::mtx);
 
     lliurex::index = -1;
@@ -382,7 +382,7 @@ nss_status _nss_gvagate_getgrnam_r(const char* name, struct group* result, char 
 
 enum nss_status _nss_gvagate_setpwent(int stayopen)
 {
-    syslog(LOG_DEBUG,"%s\n",__func__);
+    //syslog(LOG_DEBUG,"%s\n",__func__);
     std::lock_guard<std::mutex> lock(lliurex::pmtx);
 
     lliurex::pindex = -1;
@@ -404,7 +404,7 @@ enum nss_status _nss_gvagate_endpwent(void)
 
 enum nss_status _nss_gvagate_getpwent_r(struct passwd* result, char* buffer, size_t buflen, int* errnop)
 {
-    syslog(LOG_DEBUG,"%s\n",__func__);
+    //syslog(LOG_DEBUG,"%s\n",__func__);
     std::lock_guard<std::mutex> lock(lliurex::pmtx);
 
     if (lliurex::pindex == lliurex::users.size()) {

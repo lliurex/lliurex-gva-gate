@@ -16,7 +16,7 @@
 #include <string>
 #include <exception>
 
-#define LLX_GVA_GATE_DB_PATH "/tmp/llx-gva-gate/"
+#define LLX_GVA_GATE_DB_PATH "/var/lib/llx-gva-gate/"
 
 #define LLX_GVA_GATE_USER_DB_MAGIC "LLX-USERDB"
 #define LLX_GVA_GATE_USER_DB_FILE "user.db"
@@ -86,7 +86,7 @@ namespace lliurex
         virtual ~Gate();
 
         bool exists_db();
-        bool open(bool only_userdb = false);
+        bool open(bool noroot = false);
 
         void create_db();
         std::string machine_token();

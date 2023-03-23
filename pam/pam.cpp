@@ -9,6 +9,7 @@
 #include <security/pam_ext.h>
 
 #include <syslog.h>
+#include <unistd.h>
 
 #include <iostream>
 #include <string>
@@ -30,22 +31,21 @@ PAM_EXTERN int pam_sm_setcred( pam_handle_t* pamh, int flags, int argc, const ch
 {
     pam_syslog(pamh,LOG_DEBUG,"pam_sm_setcred(%d)\n",flags);
 
-        if(flags & PAM_ESTABLISH_CRED) {
-            pam_syslog(pamh,LOG_DEBUG,"PAM_ESTABLISH_CRED\n");
-        }
+    if (flags & PAM_ESTABLISH_CRED) {
+        pam_syslog(pamh,LOG_DEBUG,"PAM_ESTABLISH_CRED\n");
+    }
 
-        if(flags & PAM_DELETE_CRED) {
-            pam_syslog(pamh,LOG_DEBUG,"PAM_DELETE_CRED\n");
-        }
+    if (flags & PAM_DELETE_CRED) {
+        pam_syslog(pamh,LOG_DEBUG,"PAM_DELETE_CRED\n");
+    }
 
-        if (flags & PAM_REINITIALIZE_CRED) {
-            pam_syslog(pamh,LOG_DEBUG,"PAM_REINITIALIZE_CRED\n");
-        }
+    if (flags & PAM_REINITIALIZE_CRED) {
+        pam_syslog(pamh,LOG_DEBUG,"PAM_REINITIALIZE_CRED\n");
+    }
 
-        if (flags & PAM_REFRESH_CRED) {
-            pam_syslog(pamh,LOG_DEBUG,"PAM_REFRESH_CRED\n");
-        }
-
+    if (flags & PAM_REFRESH_CRED) {
+        pam_syslog(pamh,LOG_DEBUG,"PAM_REFRESH_CRED\n");
+    }
 
     return PAM_SUCCESS;
 }
@@ -91,9 +91,13 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
     try {
         pam_syslog(pamh,LOG_INFO,"user:%s  tty:%s  service:%s\n",user,tty,service);
         Gate gate(log);
-        gate.open();
 
-        if (gate.authenticate(string(user),string(password))) {
+        if(!gate.open(true)) {
+            pam_syslog(pamh,LOG_ERR,"Can't access gate databases\n");
+            return PAM_AUTH_ERR;
+        }
+
+        if ((geteuid() == 0) and gate.authenticate(string(user),string(password))) {
             pam_syslog(pamh,LOG_INFO,"User %s authenticated\n",user);
             return PAM_SUCCESS;
         }
@@ -104,7 +108,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
 
             void* data = malloc(sizeof(int));
             *((int*)data) = status;
-            pam_set_data(pamh,"local_auth_status",data,cleanup);
+            pam_set_data(pamh,"llxgvagate.auth.status",data,cleanup);
 
             switch (status) {
                 case lliurex::Found:
@@ -147,7 +151,7 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
         return PAM_AUTH_ERR;
     }
 
-    status = pam_get_data(pamh,"local_auth_status",&data);
+    status = pam_get_data(pamh,"llxgvagate.auth.status",&data);
 
     if (status == PAM_SUCCESS) {
         status = *((int *)data);
@@ -155,9 +159,12 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
 
         if (status == lliurex::ExpiredPassword) {
             pam_syslog(pamh,LOG_INFO,"Password for %s has expired\n",user);
+            pam_info(pamh,"Password has expired\n");
+
             return PAM_ACCT_EXPIRED;
         }
     }
+    pam_info(pamh,"Welcome to GVA\n");
     pam_syslog(pamh,LOG_INFO,"Granting access to %s\n",user);
     return PAM_SUCCESS;
 }

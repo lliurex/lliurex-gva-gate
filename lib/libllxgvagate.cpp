@@ -6,13 +6,13 @@
 #include "filedb.hpp"
 #include "http.hpp"
 
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/syslog.h>
 #include <variant.hpp>
 #include <json.hpp>
 #include <bson.hpp>
 
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/syslog.h>
 #include <sys/file.h>
 #include <unistd.h>
 
@@ -38,7 +38,7 @@ Gate::Gate() : Gate(nullptr)
 
 Gate::Gate(function<void(int priority,string message)> cb) : log_cb(cb)
 {
-    //log(LOG_DEBUG,"Gate constructor\n");
+    //log(LOG_DEBUG,"Gate with effective uid:"+std::to_string(geteuid()));
 
     userdb = FileDB(LLX_GVA_GATE_USER_DB_PATH,LLX_GVA_GATE_USER_DB_MAGIC);
     tokendb = FileDB(LLX_GVA_GATE_TOKEN_DB_PATH,LLX_GVA_GATE_TOKEN_DB_MAGIC);
@@ -58,7 +58,7 @@ bool Gate::exists_db()
     return status;
 }
 
-bool Gate::open(bool only_userdb)
+bool Gate::open(bool noroot)
 {
     //TODO: think a strategy
     bool user = false;
@@ -70,7 +70,7 @@ bool Gate::open(bool only_userdb)
     }
     else {
         if (!userdb.is_open()) {
-            user = userdb.open(only_userdb);
+            user = userdb.open(noroot);
         }
     }
 
@@ -88,12 +88,13 @@ bool Gate::open(bool only_userdb)
     }
     else {
         if (!shadowdb.is_open()) {
-            shadow = shadowdb.open();
+            shadow = shadowdb.open(noroot);
         }
     }
 
-    if (only_userdb) {
-        return user;
+    if (noroot) {
+        //TODO: shadow should not be here
+        return user and shadow;
     }
     else {
         return user and token and shadow;
@@ -112,7 +113,7 @@ void Gate::create_db()
     // user db
     if (!userdb.exists()) {
         log(LOG_DEBUG,"Creating user database\n");
-        userdb.create(DBFormat::Json,S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR);
+        userdb.create(DBFormat::Bson,S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR);
 
         userdb.open();
 
@@ -126,7 +127,7 @@ void Gate::create_db()
     // token db
     if (!tokendb.exists()) {
         log(LOG_DEBUG,"Creating token database\n");
-        tokendb.create(DBFormat::Json,S_IRUSR | S_IRGRP | S_IWUSR);
+        tokendb.create(DBFormat::Bson,S_IRUSR | S_IRGRP | S_IWUSR);
 
         tokendb.open();
 
@@ -140,7 +141,7 @@ void Gate::create_db()
     // shadow db
     if (!shadowdb.exists()) {
         log(LOG_DEBUG,"Creating shadow database\n");
-        shadowdb.create(DBFormat::Json,S_IRUSR | S_IRGRP | S_IWUSR);
+        shadowdb.create(DBFormat::Bson,S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR);
 
         shadowdb.open();
 
@@ -173,7 +174,7 @@ void Gate::update_db(Variant data)
     AutoLock user_lock(LockMode::Write,&userdb);
     AutoLock token_lock(LockMode::Write,&tokendb);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(4000));
+    //std::this_thread::sleep_for(std::chrono::milliseconds(4000));
     Variant token_data = Variant::create_struct();
     token_data["machine-token"] = data["machine-token"];
     tokendb.write(token_data);
@@ -258,7 +259,7 @@ void Gate::update_shadow_db(string name,string password)
         Variant shadow = Variant::create_struct();
         shadow["name"] = name;
         shadow["key"] = hash(password,salt(name));
-        shadow["expire"] = 60 + (int32_t)std::time(nullptr);
+        shadow["expire"] = (10*60) + (int32_t)std::time(nullptr);
         database["passwords"].append(shadow);
     }
 
@@ -435,7 +436,7 @@ bool Gate::authenticate(string user,string password)
             data = response.parse();
         }
         catch(std::exception& e) {
-            log(LOG_ERR,"Failed to parse server repsonse\n");
+            log(LOG_ERR,"Failed to parse server response\n");
             return false;
         }
 

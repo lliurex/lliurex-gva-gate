@@ -108,7 +108,7 @@ int main(int argc,char* argv[])
 
     if (cmd == "groups") {
         Gate gate(log);
-        gate.open();
+        gate.open(true);
         Variant groups = gate.get_groups();
         for (int n=0;n<groups.count();n++) {
             cout<<groups[n]["name"].get_string()<<":"<<groups[n]["gid"]<<":";
@@ -129,7 +129,7 @@ int main(int argc,char* argv[])
 
     if (cmd == "users") {
         Gate gate(log);
-        gate.open();
+        gate.open(true);
         Variant users = gate.get_users();
         for (int n=0;n<users.count();n++) {
             Variant passwd = users[n];

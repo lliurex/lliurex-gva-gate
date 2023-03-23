@@ -13,6 +13,8 @@
 #include <unistd.h>
 
 #include <experimental/filesystem>
+#include <iostream>
+#include <fstream>
 
 using namespace lliurex;
 using namespace edupals;
@@ -71,6 +73,21 @@ bool FileDB::open(bool read_only)
         const char* ro = "r";
         const char* options = (read_only) ? ro : rw;
         db = fopen(path.c_str(),options);
+
+        if (db) {
+            uint32_t header;
+            size_t status = fread(&header,4,1,db);
+
+            if (status == 1) {
+                fseek(db, 0, SEEK_END);
+
+                if (ftell(db) == header) {
+                    format = DBFormat::Bson;
+                }
+            }
+
+            fseek(db,0,SEEK_SET);
+        }
     }
 
     return (db != nullptr);
@@ -156,7 +173,9 @@ edupals::variant::Variant FileDB::read()
 
 void FileDB::write(edupals::variant::Variant data)
 {
-    stringstream ss;
+    stringstream ss(std::stringstream::out | std::stringstream::binary);
+    //std::stringbuf buffer;
+    //std::ostream ss(&buffer);
 
     Variant header;
     header = Variant::create_struct();

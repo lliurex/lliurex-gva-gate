@@ -93,8 +93,7 @@ bool Gate::open(bool noroot)
     }
 
     if (noroot) {
-        //TODO: shadow should not be here
-        return user and shadow;
+        return user;
     }
     else {
         return user and token and shadow;
@@ -141,7 +140,7 @@ void Gate::create_db()
     // shadow db
     if (!shadowdb.exists()) {
         log(LOG_DEBUG,"Creating shadow database\n");
-        shadowdb.create(DBFormat::Bson,S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR);
+        shadowdb.create(DBFormat::Bson,S_IRUSR | S_IRGRP | S_IWUSR);
 
         shadowdb.open();
 

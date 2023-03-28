@@ -10,6 +10,7 @@
 
 #include <syslog.h>
 #include <unistd.h>
+#include <sys/wait.h>
 
 #include <iostream>
 #include <string>
@@ -55,6 +56,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
     pam_syslog(pamh,LOG_DEBUG,"pam_sm_authenticate\n");
 
     int status;
+    int chkpwd = -1;
     const char* service;
     const char* user;
     const char* tty;
@@ -97,37 +99,69 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
             return PAM_AUTH_ERR;
         }
 
-        if ((geteuid() == 0) and gate.authenticate(string(user),string(password))) {
-            pam_syslog(pamh,LOG_INFO,"User %s authenticated\n",user);
-            return PAM_SUCCESS;
-        }
-        else {
-            pam_syslog(pamh,LOG_INFO,"Trying with local look-up\n");
+        if (geteuid() == 0) {
 
-            status = gate.lookup_password(user,password);
-
-            void* data = malloc(sizeof(int));
-            *((int*)data) = status;
-            pam_set_data(pamh,"llxgvagate.auth.status",data,cleanup);
-
-            switch (status) {
-                case lliurex::Found:
-                case lliurex::ExpiredPassword:
-                    return PAM_SUCCESS;
-                break;
-
-                case lliurex::NotFound:
-                    return PAM_USER_UNKNOWN;
-                break;
-
-                case lliurex::InvalidPassword:
-                    return PAM_AUTH_ERR;
-                break;
-
-                default:
-                    return PAM_AUTH_ERR;
+            if (gate.authenticate(string(user),string(password))) {
+                pam_syslog(pamh,LOG_INFO,"User %s authenticated\n",user);
+                return PAM_SUCCESS;
+            }
+            else {
+                pam_syslog(pamh,LOG_INFO,"Trying with local look-up\n");
+                chkpwd = gate.lookup_password(user,password);
             }
         }
+        else {
+
+            pid_t child;
+
+            child = fork();
+
+            if (child == 0) {
+                // child
+                execl("/bin/llx-gva-gate","chkpwd",user,password,(char*)0);
+
+                pam_syslog(pamh,LOG_ERR,"Failed to spawn llx-gva-gate process\n");
+                return PAM_AUTH_ERR;
+            }
+            else {
+                // parent
+
+                pid_t pid = waitpid(child,&chkpwd,0);
+
+                if (WIFEXITED(chkpwd) == 0) {
+                    pam_syslog(pamh,LOG_ERR,"Something went wrong on llx-gva-gate \n");
+                    return PAM_AUTH_ERR;
+                }
+
+                chkpwd = WEXITSTATUS(chkpwd);
+            }
+
+        }
+
+        pam_syslog(pamh,LOG_INFO,"local look-up:%d\n",chkpwd);
+
+        void* data = malloc(sizeof(int));
+        *((int*)data) = chkpwd;
+        pam_set_data(pamh,"llxgvagate.auth.status",data,cleanup);
+
+        switch (chkpwd) {
+            case lliurex::Found:
+            case lliurex::ExpiredPassword:
+                return PAM_SUCCESS;
+            break;
+
+            case lliurex::NotFound:
+                return PAM_USER_UNKNOWN;
+            break;
+
+            case lliurex::InvalidPassword:
+                return PAM_AUTH_ERR;
+            break;
+
+            default:
+                return PAM_AUTH_ERR;
+        }
+
     }
     catch(std::exception& e) {
         syslog(LOG_ERR,"%s\n",e.what());

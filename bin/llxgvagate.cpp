@@ -8,6 +8,8 @@
 #include <console.hpp>
 #include <cmd.hpp>
 
+#include <unistd.h>
+
 #include <iostream>
 #include <string>
 #include <chrono>
@@ -104,6 +106,25 @@ int main(int argc,char* argv[])
         Gate gate(log);
         gate.open();
         cout<<gate.machine_token()<<endl;
+    }
+
+    if (cmd == "chkpwd") {
+        if (isatty(STDIN_FILENO)) {
+            cerr<<"This command can not be executed from terminal"<<endl;
+
+            //return 2;
+        }
+
+        if (result.args.size()<3) {
+            return 1;
+        }
+
+        Gate gate(log);
+        gate.open();
+
+        int status = gate.lookup_password(result.args[2],result.args[3]);
+
+        return status;
     }
 
     if (cmd == "groups") {

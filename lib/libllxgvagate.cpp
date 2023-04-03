@@ -36,9 +36,11 @@ Gate::Gate() : Gate(nullptr)
 {
 }
 
-Gate::Gate(function<void(int priority,string message)> cb) : log_cb(cb)
+Gate::Gate(function<void(int priority,string message)> cb) : log_cb(cb),
+    server("http://127.0.0.1:5000")
 {
     //log(LOG_DEBUG,"Gate with effective uid:"+std::to_string(geteuid()));
+    load_config();
 
     userdb = FileDB(LLX_GVA_GATE_USER_DB_PATH,LLX_GVA_GATE_USER_DB_MAGIC);
     tokendb = FileDB(LLX_GVA_GATE_TOKEN_DB_PATH,LLX_GVA_GATE_TOKEN_DB_MAGIC);
@@ -132,7 +134,7 @@ void Gate::create_db()
 
         tokendb.lock_write();
         Variant token_data = Variant::create_struct();
-        token_data["machine-token"] = "";
+        token_data["machine_token"] = "";
         tokendb.write(token_data);
         tokendb.unlock();
     }
@@ -164,7 +166,7 @@ string Gate::machine_token()
         throw exception::GateError("Bad token database\n",0);
     }
 
-    return data["machine-token"].get_string();
+    return data["machine_token"].get_string();
 }
 
 void Gate::update_db(Variant data)
@@ -175,7 +177,7 @@ void Gate::update_db(Variant data)
 
     //std::this_thread::sleep_for(std::chrono::milliseconds(4000));
     Variant token_data = Variant::create_struct();
-    token_data["machine-token"] = data["machine-token"];
+    token_data["machine_token"] = data["machine_token"];
     tokendb.write(token_data);
 
     Variant user_data = userdb.read();
@@ -417,15 +419,16 @@ void Gate::set_logger(function<void(int priority,string message)> cb)
 
 bool Gate::authenticate(string user,string password)
 {
-    http::Client client("http://127.0.0.1:5000");
+    http::Client client(this->server);
 
     http::Response response;
 
     try {
-        response = client.post("authenticate",{ {"user",user},{"passwd",password}});
+        log(LOG_INFO,"login post to:" + this->server + "\n");
+        response = client.post("api/v1/login",{ {"user",user},{"passwd",password}});
     }
     catch(std::exception& e) {
-        log(LOG_ERR,"Post error:" + string(e.what()));
+        log(LOG_ERR,"Post error:" + string(e.what())+ "\n");
         return false;
     }
 
@@ -449,7 +452,7 @@ bool Gate::authenticate(string user,string password)
             update_shadow_db(user,password);
         }
         catch(std::exception& e) {
-            log(LOG_ERR,e.what());
+            log(LOG_ERR,string(e.what()) + "\n");
             return false;
         }
     }
@@ -516,7 +519,7 @@ bool Gate::validate(Variant data,Validator validator)
                 return false;
             }
 
-            if (!data["machine-token"].is_string()) {
+            if (!data["machine_token"].is_string()) {
                 return false;
             }
 
@@ -613,7 +616,7 @@ bool Gate::validate(Variant data,Validator validator)
                 return false;
             }
 
-            if (!data["machine-token"].is_string()) {
+            if (!data["machine_token"].is_string()) {
                 return false;
             }
             return validate(data["user"],Validator::User);
@@ -647,4 +650,28 @@ string Gate::hash(string password,string salt)
     char* data = crypt(password.c_str(),salt.c_str());
 
     return string(data);
+}
+
+void Gate::load_config()
+{
+    const std::string cfg_path = "/etc/llx-gva-gate.cfg";
+
+    fstream file;
+
+    file.open(cfg_path, std::fstream::in);
+
+    if (file.good()) {
+        try {
+            Variant cfg = json::load(file);
+
+            file.close();
+
+            if (cfg["server"].is_string()) {
+                this->server = cfg["server"].get_string();
+            }
+        }
+        catch (std::exception& e) {
+            log(LOG_WARNING,"Failed to parse config file\n");
+        }
+    }
 }

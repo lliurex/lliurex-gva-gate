@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from datetime import date
-from flask import Flask, json, request, Response
+from flask import Flask, json, request, Response, jsonify
 
 passwd = {"alu01" : "alu01secret"}
 
@@ -9,9 +9,11 @@ ldap_information = {"alu01":{"password":"alu01secret","gid":{"name":"Domain User
 
 api = Flask(__name__)
 
-@api.route('/authenticate', methods=['POST'])
-def authenticate():
+@api.route('/api/v1/login', methods=['POST'])
+def login():
     login_name = request.form.get("user")
+    print(login_name)
+    print(request.form.get("passwd"))
     try:
         status = passwd[login_name] == request.form.get("passwd")
         data = {"user":
@@ -26,12 +28,12 @@ def authenticate():
                     "password_expire": "",
                     "groups": ldap_information[login_name]["groups"]
                 },
-                "machine-token": "a6d1abf7fcf04d5827db9b193a91254f915cba503a6f7f9c02a2bca05f2c8027"
+                "machine_token": "a6d1abf7fcf04d5827db9b193a91254f915cba503a6f7f9c02a2bca05f2c8027"
             }
     except:
         status = False
     if status: 
-        return json.dumps(data)
+        return jsonify(data)
     else:
         return Response(response="Unauthorized",status=401) 
 

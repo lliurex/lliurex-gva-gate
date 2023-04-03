@@ -109,12 +109,15 @@ namespace lliurex
         protected:
 
         void log(int priority, std::string message);
+        void load_config();
 
         std::function<void(int priority,std::string message)> log_cb;
 
         FileDB userdb;
         FileDB shadowdb;
         FileDB tokendb;
+
+        std::string server;
 
     };
 }

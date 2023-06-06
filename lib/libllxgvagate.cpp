@@ -288,7 +288,7 @@ static string extract_salt(string key)
 int Gate::lookup_password(string user,string password)
 {
     AutoLock shadow_lock(LockMode::Read,&shadowdb);
-    int status = NotFound;
+    int status = Gate::UserNotFound;
     Variant database = shadowdb.read();
 
     //Validate here
@@ -306,17 +306,17 @@ int Gate::lookup_password(string user,string password)
                 int32_t expire = shadow["expire"].get_int32();
 
                 if (now<expire) {
-                    status = Found;
+                    status = Gate::Allowed;
                     break;
                 }
                 else {
-                    status = ExpiredPassword;
+                    status = Gate::ExpiredPassword;
                     break;
                 }
 
             }
             else {
-                status = InvalidPassword;
+                status = Gate::InvalidPassword;
                 break;
             }
         }
@@ -417,51 +417,77 @@ void Gate::set_logger(function<void(int priority,string message)> cb)
     this->log_cb = cb;
 }
 
-bool Gate::authenticate(string user,string password)
+int Gate::authenticate(string user,string password,int mode)
 {
-    http::Client client(this->server);
 
-    http::Response response;
+    int status = Gate::None;
 
-    try {
-        log(LOG_INFO,"login post to:" + this->server + "\n");
-        response = client.post("api/v1/login",{ {"user",user},{"passwd",password}});
-    }
-    catch(std::exception& e) {
-        log(LOG_ERR,"Post error:" + string(e.what())+ "\n");
-        return false;
-    }
+    // remote authentication
+    if (mode == Gate::Remote or mode == Gate::All) {
+        http::Client client(this->server);
 
-    if (response.status == 200) {
-        Variant data;
+        http::Response response;
+
         try {
-            data = response.parse();
+            log(LOG_INFO,"login post to:" + this->server + "\n");
+            response = client.post("api/v1/login",{ {"user",user},{"passwd",password}});
         }
         catch(std::exception& e) {
-            log(LOG_ERR,"Failed to parse server response\n");
-            return false;
+            log(LOG_ERR,"Post error:" + string(e.what())+ "\n");
+            status = Gate::Error;
         }
 
-        if (!validate(data,Validator::Authenticate)) {
-            log(LOG_ERR,"Bad Authenticate response\n");
-            return false;
+        if (status == Gate::None) {
+            switch (response.status) {
+                case 200: {
+                    Variant data;
+
+                    try {
+                        data = response.parse();
+
+                        if (validate(data,Validator::Authenticate)) {
+                            update_db(data);
+                            update_shadow_db(user,password);
+                            status = Gate::Allowed;
+                        }
+                        else {
+                            log(LOG_ERR,"Bad Authenticate response\n");
+                            status = Gate::Error;
+                        }
+                    }
+                    catch(std::exception& e) {
+                        log(LOG_ERR,"Failed to parse server response\n");
+                        log(LOG_ERR,string(e.what()) + "\n");
+                        // TODO: Should we report an Error after a 200 response?
+                        status = Gate::Error;
+                    }
+
+                }
+                break;
+
+                case 401:
+                    status = Gate::Unauthorized;
+                break;
+
+                default:
+                    status = Gate::Unauthorized;
+            }
         }
 
+    }
+
+    //local authentication through shadowdb
+    if ((mode == Gate::All and status == Gate::Error) or mode == Gate::Local) {
         try {
-            update_db(data);
-            update_shadow_db(user,password);
+            status = lookup_password(user,password);
         }
         catch(std::exception& e) {
             log(LOG_ERR,string(e.what()) + "\n");
-            return false;
+            status = Gate::Error;
         }
     }
-    else {
-        log(LOG_WARNING,"Server returned status: " + std::to_string(response.status) + "\n");
-        return false;
-    }
 
-    return true;
+    return status;
 }
 
 void Gate::log(int priority, string message)

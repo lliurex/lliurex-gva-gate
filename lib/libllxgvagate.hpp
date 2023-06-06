@@ -52,20 +52,6 @@ namespace lliurex
         ExpiredPassword
     };
 
-    enum class AuthStatus {
-        Error,
-        UserNotFound,
-        InvalidPassword,
-        ExpiredPassword,
-        UserNotAllowed
-    };
-
-    enum class AuthMode {
-        Local,
-        Remote,
-        All
-    };
-
     namespace exception
     {
         class GateError: public std::exception
@@ -93,6 +79,23 @@ namespace lliurex
     {
         public:
 
+        enum AuthStatus {
+            Error = -100,
+            Unauthorized,
+            UserNotFound,
+            InvalidPassword,
+            None = 0,
+            ExpiredPassword,
+            UserNotAllowed,
+            Allowed
+        };
+
+        enum AuthMode {
+            Remote = 1,
+            Local = 2,
+            All = 4
+        };
+
         Gate();
         Gate(std::function<void(int priority,std::string message)> cb);
 
@@ -112,7 +115,7 @@ namespace lliurex
         edupals::variant::Variant get_groups();
         edupals::variant::Variant get_users();
 
-        bool authenticate(std::string user,std::string password);
+        int authenticate(std::string user,std::string password,int mode = All);
 
         bool validate(edupals::variant::Variant data,Validator validator);
 

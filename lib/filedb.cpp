@@ -4,6 +4,7 @@
 
 #include "filedb.hpp"
 
+#include <stdexcept>
 #include <variant.hpp>
 #include <json.hpp>
 #include <bson.hpp>
@@ -15,6 +16,8 @@
 #include <experimental/filesystem>
 #include <iostream>
 #include <fstream>
+#include <exception>
+#include <sstream>
 
 using namespace lliurex;
 using namespace edupals;
@@ -54,6 +57,13 @@ void FileDB::create(DBFormat format,uint32_t mode)
     this->format = format;
 
     db = fopen(path.c_str(),"wb");
+
+    if (!db) {
+        stringstream ss;
+        ss<<"Failed to create FileDB:"<<path;
+        throw runtime_error(ss.str());
+    }
+
     int fd = fileno(db);
     fchmod(fd,mode);
 
@@ -88,6 +98,11 @@ bool FileDB::open(bool read_only)
 
             fseek(db,0,SEEK_SET);
         }
+        else {
+            stringstream ss;
+            ss<<"Failed to open FileDB:"<<path;
+            throw runtime_error(ss.str());
+        }
     }
 
     return (db != nullptr);
@@ -107,7 +122,9 @@ void FileDB::lock_read()
     int status = flock(fd,LOCK_SH);
 
     if (status != 0) {
-        //TODO
+        stringstream ss;
+        ss<<"Failed to lock for read FileDB:"<<path;
+        throw runtime_error(ss.str());
     }
 
 }
@@ -118,7 +135,9 @@ void FileDB::lock_write()
     int status = flock(fd,LOCK_EX);
 
     if (status != 0) {
-        //TODO
+        stringstream ss;
+        ss<<"Failed to lock for write FileDB:"<<path;
+        throw runtime_error(ss.str());
     }
 
 }
@@ -129,7 +148,9 @@ void FileDB::unlock()
     int status = flock(fd,LOCK_UN);
 
     if (status != 0) {
-        //TODO
+        stringstream ss;
+        ss<<"Failed to unlock FileDB:"<<path;
+        throw runtime_error(ss.str());
     }
 
 }
@@ -161,11 +182,11 @@ edupals::variant::Variant FileDB::read()
     }
 
     if (!value.is_struct()) {
-        //TODO
+        throw runtime_error("FileDB read: Expected struct");
     }
 
     if (value["magic"].get_string() != magic) {
-        //TODO
+        throw runtime_error("FileDB read: Bad MAGIC");
     }
 
     return value["data"];
@@ -197,7 +218,9 @@ void FileDB::write(edupals::variant::Variant data)
     int status = fwrite(ss.str().c_str(),ss.str().size(),1,db);
 
     if (status == 0) {
-        //TODO: raise exception here?
+        stringstream ss;
+        ss<<"Failed to write FileDB:"<<path;
+        throw runtime_error(ss.str());
     }
 
     syncfs(fd);

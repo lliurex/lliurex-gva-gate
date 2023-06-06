@@ -112,7 +112,7 @@ int main(int argc,char* argv[])
         if (isatty(STDIN_FILENO)) {
             cerr<<"This command can not be executed from terminal"<<endl;
 
-            //return 2;
+            return 2;
         }
 
         if (result.args.size()<3) {

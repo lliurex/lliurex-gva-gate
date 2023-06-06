@@ -52,6 +52,20 @@ namespace lliurex
         ExpiredPassword
     };
 
+    enum class AuthStatus {
+        Error,
+        UserNotFound,
+        InvalidPassword,
+        ExpiredPassword,
+        UserNotAllowed
+    };
+
+    enum class AuthMode {
+        Local,
+        Remote,
+        All
+    };
+
     namespace exception
     {
         class GateError: public std::exception
@@ -118,7 +132,7 @@ namespace lliurex
         FileDB tokendb;
 
         std::string server;
-
+        AuthMode auth_mode;
     };
 }
 

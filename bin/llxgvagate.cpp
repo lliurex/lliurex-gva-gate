@@ -9,6 +9,7 @@
 #include <cmd.hpp>
 
 #include <unistd.h>
+#include <termios.h>
 
 #include <iostream>
 #include <string>
@@ -93,6 +94,12 @@ int main(int argc,char* argv[])
     }
 
     if (cmd == "create") {
+
+        if (getuid() != 0) {
+            cerr<<"Root user expected"<<endl;
+            return 1;
+        }
+
         Gate gate(log);
         if (!gate.exists_db()) {
             gate.create_db();
@@ -103,6 +110,11 @@ int main(int argc,char* argv[])
     }
 
     if (cmd == "machine-token") {
+        if (getuid() != 0) {
+            cerr<<"Root user expected"<<endl;
+            return 1;
+        }
+
         Gate gate(log);
         gate.open();
         cout<<gate.machine_token()<<endl;
@@ -164,28 +176,90 @@ int main(int argc,char* argv[])
         }
     }
 
-    if (cmd == "login" and argc>3) {
-        Gate gate(log);
-        gate.open();
-        gate.authenticate(argv[2],argv[3]);
-    }
+    if (cmd == "auth") {
 
-    if (cmd == "test-hash") {
-        string input = "alu01";
-        clog<<"input:"<<input<<endl;
+        if (getuid() != 0) {
+            cerr<<"Root user expected"<<endl;
+            return 1;
+        }
 
-        Gate gate;
-
-        clog<<"salt:"<<gate.salt(input)<<endl;
-        clog<<gate.hash("alu01secret",gate.salt(input))<<endl;
-    }
-
-    if (cmd == "test-password") {
         Gate gate(log);
         gate.open();
 
-        int status = gate.lookup_password(argv[2],argv[3]);
-        cout<<"status:"<<status<<endl;
+        string user;
+        string password;
+
+        if (result.args.size()>2) {
+            user = result.args[2];
+        }
+        else {
+            cout<<"user:";
+            cin>>user;
+        }
+
+        cout<<"password:";
+
+        // disable input echo
+        termios oldt;
+        tcgetattr(STDIN_FILENO, &oldt);
+        termios newt = oldt;
+        newt.c_lflag &= ~ECHO;
+        tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
+        cin>>password;
+
+        // restore
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+
+        clog<<endl;
+
+        gate.authenticate(user,password);
+    }
+
+    if (cmd == "cache") {
+        string cmd2;
+
+        if (result.args.size()>2) {
+            cmd2 = result.args[2];
+        }
+
+        if (cmd2 == "list") {
+
+            Gate gate(log);
+            gate.open();
+
+            Variant cache = gate.get_cache();
+
+            for (int n=0;n<cache.count();n++) {
+                Variant entry = cache[n];
+                int32_t current = (int32_t)std::time(nullptr);
+                int32_t expire = entry["expire"].get_int32();
+                string output;
+
+                if (expire<current) {
+                    output = "expired";
+                }
+                else {
+                    output = std::to_string(expire-current) + " seconds";
+                }
+
+                cout<<entry["name"].get_string()<<" "<<output<<endl;
+            }
+
+        }
+        else {
+            if (cmd2 == "purge") {
+                Gate gate(log);
+                gate.open();
+
+                gate.purge_shadow_db();
+            }
+            else {
+                cerr<<"see help for details"<<endl;
+                return 2;
+            }
+        }
+
     }
 
     return 0;

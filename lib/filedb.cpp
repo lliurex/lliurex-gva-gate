@@ -98,11 +98,7 @@ bool FileDB::open(bool read_only)
 
             fseek(db,0,SEEK_SET);
         }
-        else {
-            stringstream ss;
-            ss<<"Failed to open FileDB:"<<path;
-            throw runtime_error(ss.str());
-        }
+
     }
 
     return (db != nullptr);

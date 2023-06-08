@@ -268,6 +268,16 @@ void Gate::update_shadow_db(string name,string password)
 
 }
 
+void Gate::purge_shadow_db()
+{
+    AutoLock shadow_lock(LockMode::Write,&shadowdb);
+
+    Variant database = Variant::create_struct();
+    database["passwords"] = Variant::create_array(0);
+
+    shadowdb.write(database);
+}
+
 static string extract_salt(string key)
 {
     vector<int> dollar;
@@ -410,6 +420,28 @@ Variant Gate::get_users()
     }
 
     return users;
+}
+
+Variant Gate::get_cache()
+{
+    AutoLock shadow_lock(LockMode::Read,&shadowdb);
+    Variant database = shadowdb.read();
+
+    Variant cache = Variant::create_array(0);
+
+    //Validate here
+
+    for (size_t n=0;n<database["passwords"].count();n++) {
+        Variant entry = database["passwords"][n];
+
+        Variant tmp = Variant::create_struct();
+        tmp["name"] = entry["name"];
+        tmp["expire"] = entry["expire"];
+
+        cache.append(tmp);
+    }
+
+    return cache;
 }
 
 void Gate::set_logger(function<void(int priority,string message)> cb)
@@ -694,6 +726,22 @@ void Gate::load_config()
 
             if (cfg["server"].is_string()) {
                 this->server = cfg["server"].get_string();
+            }
+
+            if (cfg["auth_mode"].is_string()) {
+                string mode = cfg["auth_mode"].get_string();
+
+                if (mode == "remote") {
+                    auth_mode = Gate::Remote;
+                }
+
+                if (mode == "local") {
+                    auth_mode = Gate::Local;
+                }
+
+                if (mode == "all") {
+                    auth_mode = Gate::All;
+                }
             }
         }
         catch (std::exception& e) {

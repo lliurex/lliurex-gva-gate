@@ -37,10 +37,11 @@ Gate::Gate() : Gate(nullptr)
 }
 
 Gate::Gate(function<void(int priority,string message)> cb) : log_cb(cb),
-    server("http://127.0.0.1:5000")
+    server("http://127.0.0.1:5000"),
+    auth_mode(Gate::Default)
 {
     //log(LOG_DEBUG,"Gate with effective uid:"+std::to_string(geteuid()));
-    load_config();
+    //load_config();
 
     userdb = FileDB(LLX_GVA_GATE_USER_DB_PATH,LLX_GVA_GATE_USER_DB_MAGIC);
     tokendb = FileDB(LLX_GVA_GATE_TOKEN_DB_PATH,LLX_GVA_GATE_TOKEN_DB_MAGIC);
@@ -451,6 +452,14 @@ void Gate::set_logger(function<void(int priority,string message)> cb)
 
 int Gate::authenticate(string user,string password,int mode)
 {
+    if (mode == Gate::Default) {
+        if (auth_mode == Gate::Default) {
+            mode = Gate::All;
+        }
+        else {
+            mode = auth_mode;
+        }
+    }
 
     int status = Gate::None;
 

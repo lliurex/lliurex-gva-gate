@@ -91,6 +91,7 @@ namespace lliurex
         };
 
         enum AuthMode {
+            Default = 0,
             Remote = 1,
             Local = 2,
             All = 4
@@ -104,6 +105,7 @@ namespace lliurex
 
         bool exists_db();
         bool open(bool noroot = false);
+        void load_config();
 
         void create_db();
         std::string machine_token();
@@ -117,7 +119,7 @@ namespace lliurex
         edupals::variant::Variant get_cache();
         void purge_shadow_db();
 
-        int authenticate(std::string user,std::string password,int mode = All);
+        int authenticate(std::string user,std::string password,int mode = Default);
 
         bool validate(edupals::variant::Variant data,Validator validator);
 
@@ -128,7 +130,6 @@ namespace lliurex
         protected:
 
         void log(int priority, std::string message);
-        void load_config();
 
         std::function<void(int priority,std::string message)> log_cb;
 

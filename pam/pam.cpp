@@ -92,23 +92,21 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
 
     try {
         pam_syslog(pamh,LOG_INFO,"user:%s  tty:%s  service:%s\n",user,tty,service);
-        Gate gate(log);
-
-        if(!gate.open(true)) {
-            pam_syslog(pamh,LOG_ERR,"Can't access gate databases\n");
-            return PAM_AUTH_ERR;
-        }
 
         if (geteuid() == 0) {
+            Gate gate(log);
 
-            if (gate.authenticate(string(user),string(password))) {
-                pam_syslog(pamh,LOG_INFO,"User %s authenticated\n",user);
-                return PAM_SUCCESS;
+            if(!gate.open()) {
+                pam_syslog(pamh,LOG_ERR,"Can't access gate databases\n");
+                return PAM_AUTH_ERR;
             }
-            else {
-                pam_syslog(pamh,LOG_INFO,"Trying with local look-up\n");
-                chkpwd = gate.lookup_password(user,password);
-            }
+
+            // loads config: server address, auth_mode
+            gate.load_config();
+
+            chkpwd = gate.authenticate(user,password);
+            pam_syslog(pamh,LOG_INFO,"User %s authentication returned %d\n",user,chkpwd);
+
         }
         else {
 
@@ -145,16 +143,17 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
         pam_set_data(pamh,"llxgvagate.auth.status",data,cleanup);
 
         switch (chkpwd) {
-            case lliurex::Found:
-            case lliurex::ExpiredPassword:
+            case Gate::Allowed:
+            case Gate::ExpiredPassword:
+            case Gate::UserNotAllowed:
                 return PAM_SUCCESS;
             break;
 
-            case lliurex::NotFound:
+            case Gate::UserNotFound:
                 return PAM_USER_UNKNOWN;
             break;
 
-            case lliurex::InvalidPassword:
+            case Gate::InvalidPassword:
                 return PAM_AUTH_ERR;
             break;
 
@@ -191,13 +190,21 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
         status = *((int *)data);
         pam_syslog(pamh,LOG_INFO,"Status:%d\n",status);
 
-        if (status == lliurex::ExpiredPassword) {
+        if (status == Gate::ExpiredPassword) {
             pam_syslog(pamh,LOG_INFO,"Password for %s has expired\n",user);
             pam_info(pamh,"Password has expired\n");
 
             return PAM_ACCT_EXPIRED;
         }
+
+        if (status == Gate::UserNotAllowed) {
+            pam_syslog(pamh,LOG_INFO,"User %s is not allowed\n",user);
+            pam_info(pamh,"User is not allowed to login\n");
+
+            return PAM_PERM_DENIED;
+        }
     }
+
     pam_info(pamh,"Welcome to GVA\n");
     pam_syslog(pamh,LOG_INFO,"Granting access to %s\n",user);
     return PAM_SUCCESS;

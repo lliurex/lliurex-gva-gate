@@ -4,11 +4,12 @@
 
 #include "libllxgvagate.hpp"
 
-#include <cstdint>
 #include <nss.h>
 #include <grp.h>
 #include <pwd.h>
 
+#include <cstdint>
+#include <cstdlib>
 #include <cstddef>
 #include <iostream>
 #include <fstream>

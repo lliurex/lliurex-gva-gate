@@ -10,6 +10,7 @@
 
 #include <unistd.h>
 #include <termios.h>
+#include <sysexits.h>
 
 #include <iostream>
 #include <string>
@@ -97,7 +98,7 @@ int main(int argc,char* argv[])
 
         if (getuid() != 0) {
             cerr<<"Root user expected"<<endl;
-            return 1;
+            return EX_NOPERM;
         }
 
         Gate gate(log);
@@ -112,7 +113,7 @@ int main(int argc,char* argv[])
     if (cmd == "machine-token") {
         if (getuid() != 0) {
             cerr<<"Root user expected"<<endl;
-            return 1;
+            return EX_NOPERM;
         }
 
         Gate gate(log);
@@ -124,11 +125,11 @@ int main(int argc,char* argv[])
         if (isatty(STDIN_FILENO)) {
             cerr<<"This command can not be executed from terminal"<<endl;
 
-            return 2;
+            return EX_NOPERM;
         }
 
         if (result.args.size()<3) {
-            return 1;
+            return EX_USAGE;
         }
 
         Gate gate(log);
@@ -136,7 +137,7 @@ int main(int argc,char* argv[])
 
         int status = gate.lookup_password(result.args[2],result.args[3]);
 
-        return status;
+        return (status > 0) ? 0 : EX_NOUSER;
     }
 
     if (cmd == "groups") {
@@ -180,11 +181,12 @@ int main(int argc,char* argv[])
 
         if (getuid() != 0) {
             cerr<<"Root user expected"<<endl;
-            return 1;
+            return EX_NOPERM;
         }
 
         Gate gate(log);
         gate.open();
+        gate.load_config();
 
         string user;
         string password;
@@ -256,7 +258,7 @@ int main(int argc,char* argv[])
             }
             else {
                 cerr<<"see help for details"<<endl;
-                return 2;
+                return EX_USAGE;
             }
         }
 

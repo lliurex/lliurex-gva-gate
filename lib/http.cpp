@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2022 Enrique M.G. <quiqueiii@gmail.com>
 //
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: LGPL-2.1-or-later
 
 #include "http.hpp"
 
@@ -9,7 +9,6 @@
 #include <curl/curl.h>
 
 #include <exception>
-
 #include <iostream>
 
 using namespace lliurex::http;

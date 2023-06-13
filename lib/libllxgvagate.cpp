@@ -474,11 +474,13 @@ int Gate::authenticate(string user,string password,int mode)
             response = client.post("api/v1/login",{ {"user",user},{"passwd",password}});
         }
         catch(std::exception& e) {
-            log(LOG_ERR,"Post error:" + string(e.what())+ "\n");
+            log(LOG_WARNING,"Post error:" + string(e.what())+ "\n");
             status = Gate::Error;
         }
 
         if (status == Gate::None) {
+            log(LOG_INFO,"server response: "+std::to_string(response.status)+"\n");
+
             switch (response.status) {
                 case 200: {
                     Variant data;
@@ -519,6 +521,7 @@ int Gate::authenticate(string user,string password,int mode)
 
     //local authentication through shadowdb
     if ((mode == Gate::All and status == Gate::Error) or mode == Gate::Local) {
+        log(LOG_INFO,"Trying with local cache\n");
         try {
             status = lookup_password(user,password);
         }

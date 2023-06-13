@@ -50,6 +50,30 @@ void log(int priority,string message)
     clog.flush();
 }
 
+void help()
+{
+    cout<<"Usage: llx-gva-gate [options] command"<<endl;
+
+    cout<<endl;
+
+    cout<<"options:"<<endl;
+    cout<<"-h\t--help\tshow this help"<<endl;
+    cout<<"-v\t--version\tshow version"<<endl;
+    cout<<"-d[n]\t--debug [n]\tSets log level"<<endl;
+    cout<<"\t--verbose\tsets maximum log level"<<endl;
+
+    cout<<"commands:"<<endl;
+    cout<<"create\t\tcreates database. (root)"<<endl;
+    cout<<"machine-token\t\tgets machine token string. (root)"<<endl;
+    cout<<"groups\t\ttlist group database"<<endl;
+    cout<<"users\t\ttlist user database"<<endl;
+    cout<<"auth\t\tperfoms an user authentication process"<<endl;
+    cout<<"cache list | purge"<<endl;
+    cout<<"\t\tlist\tlists cached users and expiration time"<<endl;
+    cout<<"\t\tpurge\tpurges cache database"<<endl;
+
+}
+
 int main(int argc,char* argv[])
 {
     timestamp = std::chrono::steady_clock::now();
@@ -65,7 +89,9 @@ int main(int argc,char* argv[])
     result=parser.parse(argc,argv);
 
     if (!result.success()) {
-        return 1;
+        help();
+
+        return EX_USAGE;
     }
 
     for (cmd::Option o:result.options) {
@@ -75,6 +101,12 @@ int main(int argc,char* argv[])
 
         if (o.long_name == "verbose") {
             debug_level = 7;
+        }
+
+        if (o.short_name=='h') {
+            help();
+
+            return EX_OK;
         }
     }
 
@@ -108,6 +140,8 @@ int main(int argc,char* argv[])
         else {
             clog<<"database already exists"<<endl;
         }
+
+        return EX_OK;
     }
 
     if (cmd == "machine-token") {
@@ -119,6 +153,8 @@ int main(int argc,char* argv[])
         Gate gate(log);
         gate.open();
         cout<<gate.machine_token()<<endl;
+
+        return EX_OK;
     }
 
     if (cmd == "chkpwd") {
@@ -137,7 +173,7 @@ int main(int argc,char* argv[])
 
         int status = gate.lookup_password(result.args[2],result.args[3]);
 
-        return (status > 0) ? 0 : EX_NOUSER;
+        return status;
     }
 
     if (cmd == "groups") {
@@ -159,6 +195,8 @@ int main(int argc,char* argv[])
 
             cout<<endl;
         }
+
+        return EX_OK;
     }
 
     if (cmd == "users") {
@@ -175,14 +213,11 @@ int main(int argc,char* argv[])
             cout<<passwd["dir"].get_string()<<":";
             cout<<passwd["shell"].get_string()<<endl;
         }
+
+        return EX_OK;
     }
 
     if (cmd == "auth") {
-
-        if (getuid() != 0) {
-            cerr<<"Root user expected"<<endl;
-            return EX_NOPERM;
-        }
 
         Gate gate(log);
         gate.open();
@@ -215,7 +250,43 @@ int main(int argc,char* argv[])
 
         clog<<endl;
 
-        gate.authenticate(user,password);
+        int status = gate.authenticate(user,password);
+
+        string message;
+        switch (status) {
+            case Gate::Error:
+                message = "Error performing authentication";
+            break;
+
+            case Gate::Unauthorized:
+                message = "Invalid user/password";
+            break;
+
+            case Gate::UserNotFound:
+                message = "User not found";
+            break;
+
+            case Gate::InvalidPassword:
+                message = "Invalid password";
+            break;
+
+            case Gate::ExpiredPassword:
+                message = "Password has expired";
+            break;
+
+            case Gate::UserNotAllowed:
+                message = "User is not allowed";
+            break;
+
+            case Gate::Allowed:
+                message = "Authentication is succeeded";
+            break;
+
+        }
+
+        clog<<"status:"<<message<<endl;
+
+        return (status>0) ? EX_OK : EX_DATAERR;
     }
 
     if (cmd == "cache") {
@@ -223,6 +294,10 @@ int main(int argc,char* argv[])
 
         if (result.args.size()>2) {
             cmd2 = result.args[2];
+        }
+        else {
+            help();
+            return EX_USAGE;
         }
 
         if (cmd2 == "list") {
@@ -248,6 +323,8 @@ int main(int argc,char* argv[])
                 cout<<entry["name"].get_string()<<" "<<output<<endl;
             }
 
+            return EX_OK;
+
         }
         else {
             if (cmd2 == "purge") {
@@ -255,6 +332,8 @@ int main(int argc,char* argv[])
                 gate.open();
 
                 gate.purge_shadow_db();
+
+                return EX_OK;
             }
             else {
                 cerr<<"see help for details"<<endl;
@@ -264,5 +343,6 @@ int main(int argc,char* argv[])
 
     }
 
-    return 0;
+    help();
+    return EX_OK;
 }

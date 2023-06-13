@@ -8,9 +8,9 @@ add_subdirectory(nss)
 add_subdirectory(pam)
 
 install(FILES "llx-gva-gate.cfg"
-    DESTINATION "etc/"
+    DESTINATION "/etc/"
 )
 
 install(FILES "llx-gva-gate"
-    DESTINATION "usr/share/pam-configs"
+    DESTINATION "share/pam-configs"
 )

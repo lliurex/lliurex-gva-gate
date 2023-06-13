@@ -1,0 +1,37 @@
+Source: lliurex-gva-gate
+Section: libs
+Priority: optional
+Maintainer: Enrique Medina Gremaldos <quiqueiii@gmail.com>
+Build-Depends: debhelper (>=9), cmake, make, g++, pkg-config, libedupals-base2 (>=2.0), libedupals-base-dev (>=2.0), libcurl4-openssl-dev
+Standards-Version: 3.9.7
+Homepage: https://github.com/lliurex-gva-gate
+
+Package: lliurex-gva-gate
+Architecture: any
+Depends: lib-gva-gate, gva-gate-bin, libnss-gva-gate, libpam-gva-gate
+Description: Eduauth login infraestructure
+ This metapackage install all core components in order to login into GVA Eduauth servers
+
+Package: lib-gva-gate
+Architecture: any
+Depends: ${misc:Depends}
+Description: Gva gate core library
+ Gva gate shared core library
+
+Package: gva-gate-bin
+Architecture: any
+Depends: ${misc:Depends}
+Description: Gva gate command line tool
+ Gva gate command line tool
+
+Package: libnss-gva-gate
+Architecture: any
+Depends: ${misc:Depends}
+Description: Gva gate NSS component
+ Gva gate NSS plugin library
+
+Package: libpam-gva-gate
+Architecture: any
+Depends: ${misc:Depends}
+Description: Gva gate PAM component
+ Gva gate PAM plugin library

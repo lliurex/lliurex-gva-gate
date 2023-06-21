@@ -1,20 +1,20 @@
-Name: gvagate
+Name: llxgvagate
 Default: yes
 Priority: 128
 Auth-Type: Primary
 Auth:
-    [success=end default=ignore]    pam_gvagate.so nullok try_first_pass
+    [success=end default=ignore]    pam_llxgvagate.so nullok try_first_pass
 Auth-Initial:
-    [success=end default=ignore]    pam_gvagate.so nullok
+    [success=end default=ignore]    pam_llxgvagate.so nullok
 
 Account-Type: Primary
 Account:
-    [success=end new_authtok_reqd=done default=ignore]    pam_gvagate.so
+    [success=end new_authtok_reqd=done default=ignore]    pam_llxgvagate.so
 Account-Initial:
-    [success=end new_authtok_reqd=done default=ignore]    pam_gvagate.so
+    [success=end new_authtok_reqd=done default=ignore]    pam_llxgvagate.so
 
 Session-Type: Additional
 Session:
-    optional    pam_gvagate.so
+    optional    pam_llxgvagate.so
 Session-Initial:
-    optional    pam_gvagate.so
+    optional    pam_llxgvagate.so

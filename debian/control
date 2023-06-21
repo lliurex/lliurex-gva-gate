@@ -8,29 +8,29 @@ Homepage: https://github.com/lliurex-gva-gate
 
 Package: lliurex-gva-gate
 Architecture: any
-Depends: lib-gva-gate, gva-gate-bin, libnss-gva-gate, libpam-gva-gate
+Depends: libllxgvagate, llxgvagate-bin, libnss-llxgvagate, libpam-llxgvagate
 Description: Eduauth login infraestructure
  This metapackage install all core components in order to login into GVA Eduauth servers
 
-Package: lib-gva-gate
+Package: libllxgvagate
 Architecture: any
 Depends: ${misc:Depends}
 Description: Gva gate core library
  Gva gate shared core library
 
-Package: gva-gate-bin
+Package: llxgvagate-bin
 Architecture: any
 Depends: ${misc:Depends}
 Description: Gva gate command line tool
  Gva gate command line tool
 
-Package: libnss-gva-gate
+Package: libnss-llxgvagate
 Architecture: any
 Depends: ${misc:Depends}
 Description: Gva gate NSS component
  Gva gate NSS plugin library
 
-Package: libpam-gva-gate
+Package: libpam-llxgvagate
 Architecture: any
 Depends: ${misc:Depends}
 Description: Gva gate PAM component

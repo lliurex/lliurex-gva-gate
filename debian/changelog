@@ -1,3 +1,9 @@
+lliurex-gva-gate (23.0.0.0-rc4) focal; urgency=medium
+
+  * Fixed NSS function names not being updated
+
+ -- Enrique Medina Gremaldos <quiqueiii@gmail.com>  Thu, 22 Jun 2023 13:13:22 +0200
+
 lliurex-gva-gate (23.0.0.0-rc3) focal; urgency=medium
 
   * Added missing pam build-dep

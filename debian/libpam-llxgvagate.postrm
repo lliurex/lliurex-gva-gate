@@ -35,14 +35,14 @@ remove_nss_entry() {
     fi
     sed -i --regexp-extended '
       /^group:/ {
-        s/\bgvagate\b//g
+        s/\bllxgvagate\b//g
         s/[[:space:]]+$//
       }
     ' /etc/nsswitch.conf
 
     sed -i --regexp-extended '
       /^passwd:/ {
-        s/\bgvagate\b//g
+        s/\bllxgvagate\b//g
         s/[[:space:]]+$//
       }
     ' /etc/nsswitch.conf

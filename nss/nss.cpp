@@ -24,17 +24,17 @@ using namespace edupals::variant;
 
 using namespace std;
 
-extern "C" enum nss_status _nss_gvagate_setgrent(void);
-extern "C" enum nss_status _nss_gvagate_endgrent(void);
-extern "C" enum nss_status _nss_gvagate_getgrent_r(struct group* result, char* buffer, size_t buflen, int* errnop);
-extern "C" enum nss_status _nss_gvagate_getgrgid_r(gid_t gid, struct group* result, char* buffer, size_t buflen, int* errnop);
-extern "C" enum nss_status _nss_gvagate_getgrnam_r(const char* name, struct group* result, char *buffer, size_t buflen, int* errnop);
+extern "C" enum nss_status _nss_llxgvagate_setgrent(void);
+extern "C" enum nss_status _nss_llxgvagate_endgrent(void);
+extern "C" enum nss_status _nss_llxgvagate_getgrent_r(struct group* result, char* buffer, size_t buflen, int* errnop);
+extern "C" enum nss_status _nss_llxgvagate_getgrgid_r(gid_t gid, struct group* result, char* buffer, size_t buflen, int* errnop);
+extern "C" enum nss_status _nss_llxgvagate_getgrnam_r(const char* name, struct group* result, char *buffer, size_t buflen, int* errnop);
 
-extern "C" enum nss_status _nss_gvagate_setpwent(int stayopen);
-extern "C" enum nss_status _nss_gvagate_endpwent(void);
-extern "C" enum nss_status _nss_gvagate_getpwent_r(struct passwd* result, char* buffer, size_t buflen, int* errnop);
-extern "C" enum nss_status _nss_gvagate_getpwuid_r(uid_t uid, struct passwd* result, char* buffer, size_t buflen, int* errnop);
-extern "C" enum nss_status _nss_gvagate_getpwnam_r(const char* name, struct passwd* result, char* buffer, size_t buflen, int* errnop);
+extern "C" enum nss_status _nss_llxgvagate_setpwent(int stayopen);
+extern "C" enum nss_status _nss_llxgvagate_endpwent(void);
+extern "C" enum nss_status _nss_llxgvagate_getpwent_r(struct passwd* result, char* buffer, size_t buflen, int* errnop);
+extern "C" enum nss_status _nss_llxgvagate_getpwuid_r(uid_t uid, struct passwd* result, char* buffer, size_t buflen, int* errnop);
+extern "C" enum nss_status _nss_llxgvagate_getpwnam_r(const char* name, struct passwd* result, char* buffer, size_t buflen, int* errnop);
 
 namespace lliurex
 {
@@ -228,6 +228,7 @@ int update_db()
 
 int update_passwd_db()
 {
+    //syslog(LOG_INFO,"%s\n",__func__);
     std::chrono::time_point<std::chrono::steady_clock> now = std::chrono::steady_clock::now();
 
     double delta = std::chrono::duration_cast<std::chrono::seconds>(now - lliurex::ptimestamp).count();
@@ -277,7 +278,7 @@ int update_passwd_db()
 /*!
     Open database
 */
-nss_status _nss_gvagate_setgrent(void)
+nss_status _nss_llxgvagate_setgrent(void)
 {
     //syslog(LOG_INFO,"%s\n",__func__);
     std::lock_guard<std::mutex> lock(lliurex::mtx);
@@ -297,7 +298,7 @@ nss_status _nss_gvagate_setgrent(void)
 /*!
     End database
 */
-nss_status _nss_gvagate_endgrent(void)
+nss_status _nss_llxgvagate_endgrent(void)
 {
     return NSS_STATUS_SUCCESS;
 }
@@ -305,7 +306,7 @@ nss_status _nss_gvagate_endgrent(void)
 /*!
     Read entry
 */
-nss_status _nss_gvagate_getgrent_r(struct group* result, char* buffer, size_t buflen, int* errnop)
+nss_status _nss_llxgvagate_getgrent_r(struct group* result, char* buffer, size_t buflen, int* errnop)
 {
     std::lock_guard<std::mutex> lock(lliurex::mtx);
 
@@ -325,7 +326,7 @@ nss_status _nss_gvagate_getgrent_r(struct group* result, char* buffer, size_t bu
     return NSS_STATUS_SUCCESS;
 }
 
-nss_status _nss_gvagate_getgrgid_r(gid_t gid, struct group* result, char* buffer, size_t buflen, int* errnop)
+nss_status _nss_llxgvagate_getgrgid_r(gid_t gid, struct group* result, char* buffer, size_t buflen, int* errnop)
 {
     std::lock_guard<std::mutex> lock(lliurex::mtx);
 
@@ -353,7 +354,7 @@ nss_status _nss_gvagate_getgrgid_r(gid_t gid, struct group* result, char* buffer
     return NSS_STATUS_NOTFOUND;
 }
 
-nss_status _nss_gvagate_getgrnam_r(const char* name, struct group* result, char *buffer, size_t buflen, int* errnop)
+nss_status _nss_llxgvagate_getgrnam_r(const char* name, struct group* result, char *buffer, size_t buflen, int* errnop)
 {
     std::lock_guard<std::mutex> lock(lliurex::mtx);
 
@@ -381,7 +382,7 @@ nss_status _nss_gvagate_getgrnam_r(const char* name, struct group* result, char 
     return NSS_STATUS_NOTFOUND;
 }
 
-enum nss_status _nss_gvagate_setpwent(int stayopen)
+enum nss_status _nss_llxgvagate_setpwent(int stayopen)
 {
     //syslog(LOG_DEBUG,"%s\n",__func__);
     std::lock_guard<std::mutex> lock(lliurex::pmtx);
@@ -398,14 +399,14 @@ enum nss_status _nss_gvagate_setpwent(int stayopen)
     return NSS_STATUS_SUCCESS;
 }
 
-enum nss_status _nss_gvagate_endpwent(void)
+enum nss_status _nss_llxgvagate_endpwent(void)
 {
     return NSS_STATUS_SUCCESS;
 }
 
-enum nss_status _nss_gvagate_getpwent_r(struct passwd* result, char* buffer, size_t buflen, int* errnop)
+enum nss_status _nss_llxgvagate_getpwent_r(struct passwd* result, char* buffer, size_t buflen, int* errnop)
 {
-    //syslog(LOG_DEBUG,"%s\n",__func__);
+    //syslog(LOG_INFO,"%s\n",__func__);
     std::lock_guard<std::mutex> lock(lliurex::pmtx);
 
     if (lliurex::pindex == lliurex::users.size()) {
@@ -413,7 +414,7 @@ enum nss_status _nss_gvagate_getpwent_r(struct passwd* result, char* buffer, siz
     }
 
     lliurex::Passwd& pwd = lliurex::users[lliurex::pindex];
-    syslog(LOG_DEBUG,"* %s\n",pwd.name.c_str());
+    //syslog(LOG_INFO,"* %s\n",pwd.name.c_str());
 
     int status = push_passwd(pwd,result,buffer,buflen);
     if (status == -1) {
@@ -426,7 +427,7 @@ enum nss_status _nss_gvagate_getpwent_r(struct passwd* result, char* buffer, siz
     return NSS_STATUS_SUCCESS;
 }
 
-enum nss_status _nss_gvagate_getpwuid_r(uid_t uid, struct passwd* result, char* buffer, size_t buflen, int* errnop)
+enum nss_status _nss_llxgvagate_getpwuid_r(uid_t uid, struct passwd* result, char* buffer, size_t buflen, int* errnop)
 {
     std::lock_guard<std::mutex> lock(lliurex::pmtx);
 
@@ -451,7 +452,7 @@ enum nss_status _nss_gvagate_getpwuid_r(uid_t uid, struct passwd* result, char* 
     return NSS_STATUS_NOTFOUND;
 }
 
-enum nss_status _nss_gvagate_getpwnam_r(const char* name, struct passwd* result, char* buffer, size_t buflen, int* errnop)
+enum nss_status _nss_llxgvagate_getpwnam_r(const char* name, struct passwd* result, char* buffer, size_t buflen, int* errnop)
 {
     std::lock_guard<std::mutex> lock(lliurex::pmtx);
 

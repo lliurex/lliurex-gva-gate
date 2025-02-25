@@ -14,3 +14,7 @@ install(FILES "llx-gva-gate.cfg"
 install(FILES "llx-gva-gate"
     DESTINATION "share/pam-configs"
 )
+
+install(FILES "LliurexGvaGateConfig.cmake"
+    DESTINATION "lib/cmake/LliurexGvaGate"
+)

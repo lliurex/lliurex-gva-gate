@@ -64,7 +64,6 @@ void help()
 
     cout<<"commands:"<<endl;
     cout<<"create\t\tcreates database. (root)"<<endl;
-    cout<<"machine-token\t\tgets machine token string. (root)"<<endl;
     cout<<"groups\t\ttlist group database"<<endl;
     cout<<"users\t\ttlist user database"<<endl;
     cout<<"auth\t\tperfoms an user authentication process"<<endl;
@@ -140,19 +139,6 @@ int main(int argc,char* argv[])
         else {
             clog<<"database already exists"<<endl;
         }
-
-        return EX_OK;
-    }
-
-    if (cmd == "machine-token") {
-        if (getuid() != 0) {
-            cerr<<"Root user expected"<<endl;
-            return EX_NOPERM;
-        }
-
-        Gate gate(log);
-        gate.open();
-        cout<<gate.machine_token()<<endl;
 
         return EX_OK;
     }

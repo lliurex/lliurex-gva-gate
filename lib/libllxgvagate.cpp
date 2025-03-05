@@ -44,7 +44,6 @@ Gate::Gate(function<void(int priority,string message)> cb) : log_cb(cb),
     //load_config();
 
     userdb = FileDB(LLX_GVA_GATE_USER_DB_PATH,LLX_GVA_GATE_USER_DB_MAGIC);
-    tokendb = FileDB(LLX_GVA_GATE_TOKEN_DB_PATH,LLX_GVA_GATE_TOKEN_DB_MAGIC);
     shadowdb = FileDB(LLX_GVA_GATE_SHADOW_DB_PATH,LLX_GVA_GATE_SHADOW_DB_MAGIC);
 
 }
@@ -56,7 +55,7 @@ Gate::~Gate()
 
 bool Gate::exists_db()
 {
-    bool status = userdb.exists() and tokendb.exists() and shadowdb.exists();
+    bool status = userdb.exists() and shadowdb.exists();
 
     return status;
 }
@@ -65,7 +64,6 @@ bool Gate::open(bool noroot)
 {
     //TODO: think a strategy
     bool user = false;
-    bool token = false;
     bool shadow = false;
 
     if (!userdb.exists()) {
@@ -74,15 +72,6 @@ bool Gate::open(bool noroot)
     else {
         if (!userdb.is_open()) {
             user = userdb.open(noroot);
-        }
-    }
-
-    if (!tokendb.exists()) {
-        log(LOG_ERR,"Token database does not exists\n");
-    }
-    else {
-        if (!tokendb.is_open()) {
-            token = tokendb.open();
         }
     }
 
@@ -99,7 +88,7 @@ bool Gate::open(bool noroot)
         return user;
     }
     else {
-        return user and token and shadow;
+        return user and shadow;
     }
 }
 
@@ -126,20 +115,6 @@ void Gate::create_db()
         userdb.unlock();
     }
 
-    // token db
-    if (!tokendb.exists()) {
-        log(LOG_DEBUG,"Creating token database\n");
-        tokendb.create(DBFormat::Bson,S_IRUSR | S_IRGRP | S_IWUSR);
-
-        tokendb.open();
-
-        tokendb.lock_write();
-        Variant token_data = Variant::create_struct();
-        token_data["machine_token"] = "";
-        tokendb.write(token_data);
-        tokendb.unlock();
-    }
-
     // shadow db
     if (!shadowdb.exists()) {
         log(LOG_DEBUG,"Creating shadow database\n");
@@ -156,30 +131,10 @@ void Gate::create_db()
 
 }
 
-string Gate::machine_token()
-{
-    AutoLock lock(LockMode::Read,&tokendb);
-
-    Variant data = tokendb.read();
-
-    if (!validate(data,Validator::TokenDatabase)) {
-        log(LOG_ERR,"Bad token database\n");
-        throw exception::GateError("Bad token database\n",0);
-    }
-
-    return data["machine_token"].get_string();
-}
-
 void Gate::update_db(Variant data)
 {
 
     AutoLock user_lock(LockMode::Write,&userdb);
-    AutoLock token_lock(LockMode::Write,&tokendb);
-
-    //std::this_thread::sleep_for(std::chrono::milliseconds(4000));
-    Variant token_data = Variant::create_struct();
-    token_data["machine_token"] = data["machine_token"];
-    tokendb.write(token_data);
 
     Variant user_data = userdb.read();
     if (!validate(user_data,Validator::UserDatabase)) {
@@ -584,18 +539,6 @@ bool Gate::validate(Variant data,Validator validator)
             return validate(data["users"],Validator::Users);
         break;
 
-        case Validator::TokenDatabase:
-            if (!data.is_struct()) {
-                return false;
-            }
-
-            if (!data["machine_token"].is_string()) {
-                return false;
-            }
-
-            return true;
-        break;
-
         case Validator::ShadowDatabase:
             if (!data.is_struct()) {
                 return false;
@@ -686,9 +629,6 @@ bool Gate::validate(Variant data,Validator validator)
                 return false;
             }
 
-            if (!data["machine_token"].is_string()) {
-                return false;
-            }
             return validate(data["user"],Validator::User);
         break;
 

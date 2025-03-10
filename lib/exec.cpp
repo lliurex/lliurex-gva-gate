@@ -1,0 +1,54 @@
+// SPDX-FileCopyrightText: 2022 Enrique M.G. <quique@necos.es>
+//
+// SPDX-License-Identifier: LGPL-2.1-or-later
+
+#include "exec.hpp"
+
+#include <process.hpp>
+#include <json.hpp>
+
+#include <unistd.h>
+
+#include <sstream>
+
+#define LIB_EXEC_PATH "/usr/lib/gva-gate/libgva"
+
+using namespace edupals;
+using namespace edupals::variant;
+using namespace std;
+
+Exec::Exec(string runtime):runtime(runtime)
+{
+}
+
+Variant Exec::run(string user, string password)
+{
+    Variant response = Variant::create_struct();
+    response["status"] = -1;
+
+    string filename = LIB_EXEC_PATH;
+    stringstream data;
+    int out_fd;
+    int status;
+
+    try {
+        Process child = Process::spawn(filename,{runtime,user,password},&out_fd,nullptr,nullptr);
+
+        char buffer;
+        while (read(out_fd,&buffer,1) > 0) {
+            data<<buffer;
+        }
+        close(outfd);
+        status = child.wait();
+
+        if (status == 0) {
+            Variant exec_response = json::load(data);
+            response["response"] = exec_response;
+        }
+    }
+    catch (std::exception& e) {
+        throw runtime_error(e.what());
+    }
+
+    return response;
+}

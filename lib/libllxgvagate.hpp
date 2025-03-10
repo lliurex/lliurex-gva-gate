@@ -92,6 +92,12 @@ namespace lliurex
             All = 4
         };
 
+        enum class AuthMethod {
+            Local = 0,
+            ADI = 1,
+            ID = 2
+        };
+
         Gate();
         Gate(std::function<void(int priority,std::string message)> cb);
 
@@ -133,6 +139,8 @@ namespace lliurex
 
         std::string server;
         AuthMode auth_mode;
+
+        std::vector<AuthMethod> auth_methods;
     };
 }
 

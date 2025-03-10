@@ -38,7 +38,8 @@ Gate::Gate() : Gate(nullptr)
 
 Gate::Gate(function<void(int priority,string message)> cb) : log_cb(cb),
     server("http://127.0.0.1:5000"),
-    auth_mode(Gate::Default)
+    auth_mode(Gate::Default),
+    auth_methods({Gate::AuthMethod::Local})
 {
     //log(LOG_DEBUG,"Gate with effective uid:"+std::to_string(geteuid()));
     //load_config();
@@ -693,6 +694,32 @@ void Gate::load_config()
 
                 if (mode == "all") {
                     auth_mode = Gate::All;
+                }
+            }
+
+            if (cfg["auth_methods"].is_array()) {
+                auth_methods.clear();
+
+                for (Variant m : cfg["auth_methods"].get_array()) {
+                    if (m.is_string()) {
+                        string method = m.get_string();
+
+                        if (method == "local") {
+                            auth_methods.push_back(Gate::AuthMethod::Local);
+                        }
+
+                        if (method == "adi") {
+                            auth_methods.push_back(Gate::AuthMethod::ADI);
+                        }
+
+                        if (method == "id") {
+                            auth_methods.push_back(Gate::AuthMethod::ID);
+                        }
+                    }
+                }
+
+                if (auth_methods.size() == 0) {
+                    auth_methods.push_back(Gate::AuthMethod::Local);
                 }
             }
         }

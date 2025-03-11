@@ -5,6 +5,7 @@
 #include "libllxgvagate.hpp"
 #include "filedb.hpp"
 #include "http.hpp"
+#include "exec.hpp"
 
 #include <variant.hpp>
 #include <json.hpp>
@@ -39,7 +40,7 @@ Gate::Gate() : Gate(nullptr)
 Gate::Gate(function<void(int priority,string message)> cb) : log_cb(cb),
     server("http://127.0.0.1:5000"),
     auth_mode(Gate::Default),
-    auth_methods({Gate::AuthMethod::Local})
+    auth_methods({AuthMethod::Local})
 {
     //log(LOG_DEBUG,"Gate with effective uid:"+std::to_string(geteuid()));
     //load_config();
@@ -406,85 +407,72 @@ void Gate::set_logger(function<void(int priority,string message)> cb)
     this->log_cb = cb;
 }
 
-int Gate::authenticate(string user,string password,int mode)
+int Gate::auth_exec(string method, string user, string password)
 {
-    if (mode == Gate::Default) {
-        if (auth_mode == Gate::Default) {
-            mode = Gate::All;
-        }
-        else {
-            mode = auth_mode;
-        }
-    }
+    int status = Gate::Error;
 
-    int status = Gate::None;
+    Exec libgate(method);
 
-    // remote authentication
-    if (mode == Gate::Remote or mode == Gate::All) {
-        http::Client client(this->server);
+    try {
+        Variant data = libgate.run(user,password);
+        status = data["status"].get_int32();
 
-        http::Response response;
+        if (status == Gate::Allowed) {
+            Variant response = data["response"];
 
-        try {
-            log(LOG_INFO,"login post to:" + this->server + "\n");
-            response = client.post("api/v1/login",{ {"user",user},{"passwd",password}});
-        }
-        catch(std::exception& e) {
-            log(LOG_WARNING,"Post error:" + string(e.what())+ "\n");
-            status = Gate::Error;
-        }
-
-        if (status == Gate::None) {
-            log(LOG_INFO,"server response: "+std::to_string(response.status)+"\n");
-
-            switch (response.status) {
-                case 200: {
-                    Variant data;
-
-                    try {
-                        data = response.parse();
-
-                        if (validate(data,Validator::Authenticate)) {
-                            update_db(data);
-                            update_shadow_db(user,password);
-                            status = Gate::Allowed;
-                        }
-                        else {
-                            log(LOG_ERR,"Bad Authenticate response\n");
-                            status = Gate::Error;
-                        }
-                    }
-                    catch(std::exception& e) {
-                        log(LOG_ERR,"Failed to parse server response\n");
-                        log(LOG_ERR,string(e.what()) + "\n");
-                        // TODO: Should we report an Error after a 200 response?
-                        status = Gate::Error;
-                    }
-
-                }
-                break;
-
-                case 401:
-                    status = Gate::Unauthorized;
-                break;
-
-                default:
-                    status = Gate::Unauthorized;
+            if (validate(response,Validator::Authenticate)) {
+                update_db(response);
+                update_shadow_db(user,password);
+            }
+            else {
+                log(LOG_ERR,"Bad Authenticate response\n");
+                status = Gate::Error;
             }
         }
 
     }
+    catch(std::exception& e) {
+        log(LOG_ERR,string(e.what()) + "\n");
+        status = Gate::Error;
+    }
 
-    //local authentication through shadowdb
-    if ((mode == Gate::All and status == Gate::Error) or mode == Gate::Local) {
-        log(LOG_INFO,"Trying with local cache\n");
-        try {
-            status = lookup_password(user,password);
+    return status;
+}
+
+int Gate::authenticate(string user,string password)
+{
+    int status = Gate::Error;
+
+    for (AuthMehod method : auth_methods) {
+
+        if (status == Gate::Error or status == Gate::UserNotFound) {
+            switch (method) {
+
+                case AuthMethod::Local: {
+                    log(LOG_INFO,"Trying with local cache\n");
+                    try {
+                        status = lookup_password(user,password);
+                    }
+                    catch(std::exception& e) {
+                        log(LOG_ERR,string(e.what()) + "\n");
+                        status = Gate::Error;
+                    }
+                }
+                break;
+
+                case AuthMehod::ADI:
+                    status = auth_exec("adi",user,password);
+                break;
+
+                case AuthMehod::ID:
+                    status = auth_exec("id",user,password);
+                break;
+
+                default:
+                    log(LOG_ERR,string("Unknown authentication method:" + method + "\n");
+            }
         }
-        catch(std::exception& e) {
-            log(LOG_ERR,string(e.what()) + "\n");
-            status = Gate::Error;
-        }
+
     }
 
     return status;
@@ -705,21 +693,21 @@ void Gate::load_config()
                         string method = m.get_string();
 
                         if (method == "local") {
-                            auth_methods.push_back(Gate::AuthMethod::Local);
+                            auth_methods.push_back(AuthMethod::Local);
                         }
 
                         if (method == "adi") {
-                            auth_methods.push_back(Gate::AuthMethod::ADI);
+                            auth_methods.push_back(uthMethod::ADI);
                         }
 
                         if (method == "id") {
-                            auth_methods.push_back(Gate::AuthMethod::ID);
+                            auth_methods.push_back(AuthMethod::ID);
                         }
                     }
                 }
 
                 if (auth_methods.size() == 0) {
-                    auth_methods.push_back(Gate::AuthMethod::Local);
+                    auth_methods.push_back(AuthMethod::Local);
                 }
             }
         }

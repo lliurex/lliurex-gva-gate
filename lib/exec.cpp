@@ -24,7 +24,7 @@ Exec::Exec(string runtime):runtime(runtime)
 Variant Exec::run(string user, string password)
 {
     Variant response = Variant::create_struct();
-    response["status"] = -1;
+    response["status"] = Gate::Error;
 
     string filename = LIB_EXEC_PATH;
     stringstream data;
@@ -41,7 +41,8 @@ Variant Exec::run(string user, string password)
         close(outfd);
         status = child.wait();
 
-        if (status == 0) {
+        response["status"] = status;
+        if (status == Gate::Allowed) {
             Variant exec_response = json::load(data);
             response["response"] = exec_response;
         }

@@ -47,6 +47,12 @@ namespace lliurex
         ExpiredPassword
     };
 
+    enum class AuthMethod {
+            Local = 0,
+            ADI = 1,
+            ID = 2
+    };
+
     namespace exception
     {
         class GateError: public std::exception
@@ -79,10 +85,12 @@ namespace lliurex
             Unauthorized,
             UserNotFound,
             InvalidPassword,
-            None = 0,
             ExpiredPassword,
             UserNotAllowed,
-            Allowed
+
+            Allowed = 200,
+            Unauthorized = 401,
+
         };
 
         enum AuthMode {
@@ -90,12 +98,6 @@ namespace lliurex
             Remote = 1,
             Local = 2,
             All = 4
-        };
-
-        enum class AuthMethod {
-            Local = 0,
-            ADI = 1,
-            ID = 2
         };
 
         Gate();
@@ -119,7 +121,7 @@ namespace lliurex
         edupals::variant::Variant get_cache();
         void purge_shadow_db();
 
-        int authenticate(std::string user,std::string password,int mode = Default);
+        int authenticate(std::string user,std::string password);
 
         bool validate(edupals::variant::Variant data,Validator validator);
 
@@ -130,6 +132,7 @@ namespace lliurex
 
         protected:
 
+        int auth_exec(std::string method, std::string user, std::string password);
         void log(int priority, std::string message);
 
         std::function<void(int priority,std::string message)> log_cb;

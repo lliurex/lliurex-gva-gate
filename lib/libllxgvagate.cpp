@@ -443,7 +443,7 @@ int Gate::authenticate(string user,string password)
 {
     int status = Gate::Error;
 
-    for (AuthMehod method : auth_methods) {
+    for (AuthMethod method : auth_methods) {
 
         if (status == Gate::Error or status == Gate::UserNotFound) {
             switch (method) {
@@ -460,16 +460,16 @@ int Gate::authenticate(string user,string password)
                 }
                 break;
 
-                case AuthMehod::ADI:
+                case AuthMethod::ADI:
                     status = auth_exec("adi",user,password);
                 break;
 
-                case AuthMehod::ID:
+                case AuthMethod::ID:
                     status = auth_exec("id",user,password);
                 break;
 
                 default:
-                    log(LOG_ERR,string("Unknown authentication method:" + method + "\n");
+                    log(LOG_ERR,"Unknown authentication method:" + std::to_string((int)method) + "\n");
             }
         }
 
@@ -697,7 +697,7 @@ void Gate::load_config()
                         }
 
                         if (method == "adi") {
-                            auth_methods.push_back(uthMethod::ADI);
+                            auth_methods.push_back(AuthMethod::ADI);
                         }
 
                         if (method == "id") {

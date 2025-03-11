@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
 #include "exec.hpp"
+#include "libllxgvagate.hpp"
 
 #include <process.hpp>
 #include <json.hpp>
@@ -13,8 +14,10 @@
 
 #define LIB_EXEC_PATH "/usr/lib/gva-gate/libgva"
 
+using namespace lliurex;
 using namespace edupals;
 using namespace edupals::variant;
+using namespace edupals::system;
 using namespace std;
 
 Exec::Exec(string runtime):runtime(runtime)
@@ -38,7 +41,7 @@ Variant Exec::run(string user, string password)
         while (read(out_fd,&buffer,1) > 0) {
             data<<buffer;
         }
-        close(outfd);
+        close(out_fd);
         status = child.wait();
 
         response["status"] = status;

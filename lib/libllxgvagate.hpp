@@ -82,7 +82,6 @@ namespace lliurex
 
         enum AuthStatus {
             Error = -100,
-            Unauthorized,
             UserNotFound,
             InvalidPassword,
             ExpiredPassword,

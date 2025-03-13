@@ -4,7 +4,6 @@
 
 #include "libllxgvagate.hpp"
 #include "filedb.hpp"
-#include "http.hpp"
 #include "exec.hpp"
 
 #include <variant.hpp>
@@ -38,8 +37,6 @@ Gate::Gate() : Gate(nullptr)
 }
 
 Gate::Gate(function<void(int priority,string message)> cb) : log_cb(cb),
-    server("http://127.0.0.1:5000"),
-    auth_mode(Gate::Default),
     auth_methods({AuthMethod::Local})
 {
     //log(LOG_DEBUG,"Gate with effective uid:"+std::to_string(geteuid()));
@@ -416,16 +413,14 @@ int Gate::auth_exec(string method, string user, string password)
     try {
         log(LOG_DEBUG,"exec " + method + "\n");
         Variant data = libgate.run(user,password);
-        clog<<data<<endl;
 
         status = data["status"].get_int32();
-        clog<<"exec status:"<<status<<endl;
 
         if (status == Gate::Allowed) {
             Variant response = data["response"];
 
             if (validate(response,Validator::Authenticate)) {
-                log(LOG_DEBUG,"response validated\n");
+                log(LOG_DEBUG,"response is valid\n");
                 update_db(response);
                 update_shadow_db(user,password);
             }
@@ -449,7 +444,6 @@ int Gate::authenticate(string user,string password)
     int status = Gate::Error;
 
     for (AuthMethod method : auth_methods) {
-        clog<<"trying with method:"<<(int)method<<endl;
 
         if (status == Gate::Error or status == Gate::UserNotFound) {
             switch (method) {
@@ -472,7 +466,6 @@ int Gate::authenticate(string user,string password)
 
                 case AuthMethod::ID:
                     status = auth_exec("id",user,password);
-                    clog<<"status:"<<status<<endl;
                 break;
 
                 default:
@@ -671,26 +664,6 @@ void Gate::load_config()
             Variant cfg = json::load(file);
 
             file.close();
-
-            if (cfg["server"].is_string()) {
-                this->server = cfg["server"].get_string();
-            }
-
-            if (cfg["auth_mode"].is_string()) {
-                string mode = cfg["auth_mode"].get_string();
-
-                if (mode == "remote") {
-                    auth_mode = Gate::Remote;
-                }
-
-                if (mode == "local") {
-                    auth_mode = Gate::Local;
-                }
-
-                if (mode == "all") {
-                    auth_mode = Gate::All;
-                }
-            }
 
             if (cfg["auth_methods"].is_array()) {
                 auth_methods.clear();

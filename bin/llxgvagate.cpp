@@ -205,7 +205,16 @@ int main(int argc,char* argv[])
 
     if (cmd == "auth") {
 
+        if (getuid() != 0) {
+            cerr<<"Root user expected. Is setuid bit set?"<<endl;
+            return EX_NOPERM;
+        }
+
         Gate gate(log);
+        if (!gate.exists_db()) {
+            gate.create_db();
+        }
+
         gate.open();
         gate.load_config();
 
@@ -265,7 +274,7 @@ int main(int argc,char* argv[])
             break;
 
             case Gate::Allowed:
-                message = "Authentication is succeeded";
+                message = "Authentication succeeded";
             break;
 
         }

@@ -414,13 +414,18 @@ int Gate::auth_exec(string method, string user, string password)
     Exec libgate(method);
 
     try {
+        log(LOG_DEBUG,"exec " + method + "\n");
         Variant data = libgate.run(user,password);
+        clog<<data<<endl;
+
         status = data["status"].get_int32();
+        clog<<"exec status:"<<status<<endl;
 
         if (status == Gate::Allowed) {
             Variant response = data["response"];
 
             if (validate(response,Validator::Authenticate)) {
+                log(LOG_DEBUG,"response validated\n");
                 update_db(response);
                 update_shadow_db(user,password);
             }
@@ -444,6 +449,7 @@ int Gate::authenticate(string user,string password)
     int status = Gate::Error;
 
     for (AuthMethod method : auth_methods) {
+        clog<<"trying with method:"<<(int)method<<endl;
 
         if (status == Gate::Error or status == Gate::UserNotFound) {
             switch (method) {
@@ -466,6 +472,7 @@ int Gate::authenticate(string user,string password)
 
                 case AuthMethod::ID:
                     status = auth_exec("id",user,password);
+                    clog<<"status:"<<status<<endl;
                 break;
 
                 default:

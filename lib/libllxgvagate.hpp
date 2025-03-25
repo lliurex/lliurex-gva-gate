@@ -81,14 +81,24 @@ namespace lliurex
         public:
 
         enum AuthStatus {
-            Error = -100,
+            Allowed = 0,
+
             UserNotFound,
             InvalidPassword,
             ExpiredPassword,
-            UserNotAllowed,
 
-            Allowed = 200,
-            Unauthorized = 401,
+            /* General auth error */
+            Unauthorized,
+            InteractionRequired,
+
+            ServerNotFound = 10,
+            InvalidResponse,
+            BannedApp,
+            BadArguments,
+            AdiNotFound,
+
+            /* General error */
+            Error = 20
 
         };
 
@@ -101,7 +111,6 @@ namespace lliurex
 
         Gate();
         Gate(std::function<void(int priority,std::string message)> cb);
-
 
         virtual ~Gate();
 

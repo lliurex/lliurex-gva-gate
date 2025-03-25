@@ -269,10 +269,6 @@ int main(int argc,char* argv[])
                 message = "Password has expired";
             break;
 
-            case Gate::UserNotAllowed:
-                message = "User is not allowed";
-            break;
-
             case Gate::Allowed:
                 message = "Authentication succeeded";
             break;

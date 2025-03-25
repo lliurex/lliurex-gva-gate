@@ -31,11 +31,20 @@ Variant Exec::run(string user, string password)
 
     string filename = LIB_EXEC_PATH;
     stringstream data;
+    stringstream args;
     int out_fd;
+    int in_fd;
     int status;
 
+    args<<user<<" "<<password<<" "<<runtime<<"\n";
+
     try {
-        Process child = Process::spawn(filename,{runtime,user,password},&out_fd,nullptr,nullptr);
+        Process child = Process::spawn(filename,{},&out_fd,&in_fd,nullptr);
+
+        for (char c:args.str()) {
+            write(in_fd,&c,1);
+        }
+        close(in_fd);
 
         char buffer;
         while (read(out_fd,&buffer,1) > 0) {

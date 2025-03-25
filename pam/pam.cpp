@@ -145,7 +145,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
         switch (chkpwd) {
             case Gate::Allowed:
             case Gate::ExpiredPassword:
-            case Gate::UserNotAllowed:
+            //case Gate::UserNotAllowed:
                 return PAM_SUCCESS;
             break;
 
@@ -197,12 +197,14 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
             return PAM_ACCT_EXPIRED;
         }
 
+        /*
         if (status == Gate::UserNotAllowed) {
             pam_syslog(pamh,LOG_INFO,"User %s is not allowed\n",user);
             pam_info(pamh,"User is not allowed to login\n");
 
             return PAM_PERM_DENIED;
         }
+        */
     }
 
     pam_info(pamh,"Welcome to GVA\n");

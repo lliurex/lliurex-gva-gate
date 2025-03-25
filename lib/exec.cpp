@@ -56,7 +56,7 @@ Variant Exec::run(string user, string password)
         response["status"] = status;
         if (status == Gate::Allowed) {
             Variant exec_response = json::load(data);
-            response["response"] = exec_response;
+            response["user"] = exec_response;
         }
     }
     catch (std::exception& e) {

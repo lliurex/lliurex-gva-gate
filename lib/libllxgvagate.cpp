@@ -141,8 +141,8 @@ void Gate::update_db(Variant data)
         throw exception::GateError("Bad user database\n",0);
     }
 
-    string login = data["user"]["login"].get_string();
-    int32_t uid = data["user"]["uid"].get_int32();
+    string login = data["login"].get_string();
+    int32_t uid = data["uid"].get_int32();
 
     Variant tmp = Variant::create_array(0);
 
@@ -154,7 +154,7 @@ void Gate::update_db(Variant data)
         }
     }
 
-    tmp.append(data["user"]);
+    tmp.append(data);
 
     user_data["users"] = tmp;
 
@@ -413,21 +413,19 @@ int Gate::auth_exec(string method, string user, string password)
     try {
         log(LOG_DEBUG,"exec " + method + "\n");
         Variant data = libgate.run(user,password);
+        if (validate(data, Validator::Authenticate)) {
+            status = data["status"].get_int32();
+            log(LOG_DEBUG,"status:" + std::to_string(status) + "\n");
 
-        status = data["status"].get_int32();
-
-        if (status == Gate::Allowed) {
-            Variant response = data["response"];
-
-            if (validate(response,Validator::Authenticate)) {
-                log(LOG_DEBUG,"response is valid\n");
-                update_db(response);
+            if (status == Gate::Allowed) {
+                update_db(data["user"]);
                 update_shadow_db(user,password);
             }
-            else {
-                log(LOG_ERR,"Bad Authenticate response\n");
-                status = Gate::Error;
-            }
+
+        }
+        else {
+            log(LOG_ERR,"Bad Authenticate response\n");
+            status = Gate::Error;
         }
 
     }
@@ -615,6 +613,14 @@ bool Gate::validate(Variant data,Validator validator)
 
         case Validator::Authenticate:
             if (!data.is_struct()) {
+                return false;
+            }
+
+            if (!data["status"].is_int32()) {
+                return false;
+            }
+
+            if (!data["user"].is_struct()) {
                 return false;
             }
 

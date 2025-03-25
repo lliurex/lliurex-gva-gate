@@ -1,3 +1,9 @@
+lliurex-gva-gate (25.0.0.0) jammy; urgency=medium
+
+  * Updated to new login architecture
+
+ -- Enrique Medina Gremaldos <quique@necos.es>  Tue, 25 Mar 2025 10:27:57 +0100
+
 lliurex-gva-gate (23.0.0.1) jammy; urgency=medium
 
   * Jammy release

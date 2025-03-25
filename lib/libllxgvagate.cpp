@@ -4,7 +4,7 @@
 
 #include "libllxgvagate.hpp"
 #include "filedb.hpp"
-#include "http.hpp"
+#include "exec.hpp"
 
 #include <variant.hpp>
 #include <json.hpp>
@@ -37,14 +37,12 @@ Gate::Gate() : Gate(nullptr)
 }
 
 Gate::Gate(function<void(int priority,string message)> cb) : log_cb(cb),
-    server("http://127.0.0.1:5000"),
-    auth_mode(Gate::Default)
+    auth_methods({AuthMethod::Local})
 {
     //log(LOG_DEBUG,"Gate with effective uid:"+std::to_string(geteuid()));
     //load_config();
 
     userdb = FileDB(LLX_GVA_GATE_USER_DB_PATH,LLX_GVA_GATE_USER_DB_MAGIC);
-    tokendb = FileDB(LLX_GVA_GATE_TOKEN_DB_PATH,LLX_GVA_GATE_TOKEN_DB_MAGIC);
     shadowdb = FileDB(LLX_GVA_GATE_SHADOW_DB_PATH,LLX_GVA_GATE_SHADOW_DB_MAGIC);
 
 }
@@ -56,7 +54,7 @@ Gate::~Gate()
 
 bool Gate::exists_db()
 {
-    bool status = userdb.exists() and tokendb.exists() and shadowdb.exists();
+    bool status = userdb.exists() and shadowdb.exists();
 
     return status;
 }
@@ -65,7 +63,6 @@ bool Gate::open(bool noroot)
 {
     //TODO: think a strategy
     bool user = false;
-    bool token = false;
     bool shadow = false;
 
     if (!userdb.exists()) {
@@ -74,15 +71,6 @@ bool Gate::open(bool noroot)
     else {
         if (!userdb.is_open()) {
             user = userdb.open(noroot);
-        }
-    }
-
-    if (!tokendb.exists()) {
-        log(LOG_ERR,"Token database does not exists\n");
-    }
-    else {
-        if (!tokendb.is_open()) {
-            token = tokendb.open();
         }
     }
 
@@ -99,7 +87,7 @@ bool Gate::open(bool noroot)
         return user;
     }
     else {
-        return user and token and shadow;
+        return user and shadow;
     }
 }
 
@@ -126,20 +114,6 @@ void Gate::create_db()
         userdb.unlock();
     }
 
-    // token db
-    if (!tokendb.exists()) {
-        log(LOG_DEBUG,"Creating token database\n");
-        tokendb.create(DBFormat::Bson,S_IRUSR | S_IRGRP | S_IWUSR);
-
-        tokendb.open();
-
-        tokendb.lock_write();
-        Variant token_data = Variant::create_struct();
-        token_data["machine_token"] = "";
-        tokendb.write(token_data);
-        tokendb.unlock();
-    }
-
     // shadow db
     if (!shadowdb.exists()) {
         log(LOG_DEBUG,"Creating shadow database\n");
@@ -156,30 +130,10 @@ void Gate::create_db()
 
 }
 
-string Gate::machine_token()
-{
-    AutoLock lock(LockMode::Read,&tokendb);
-
-    Variant data = tokendb.read();
-
-    if (!validate(data,Validator::TokenDatabase)) {
-        log(LOG_ERR,"Bad token database\n");
-        throw exception::GateError("Bad token database\n",0);
-    }
-
-    return data["machine_token"].get_string();
-}
-
 void Gate::update_db(Variant data)
 {
 
     AutoLock user_lock(LockMode::Write,&userdb);
-    AutoLock token_lock(LockMode::Write,&tokendb);
-
-    //std::this_thread::sleep_for(std::chrono::milliseconds(4000));
-    Variant token_data = Variant::create_struct();
-    token_data["machine_token"] = data["machine_token"];
-    tokendb.write(token_data);
 
     Variant user_data = userdb.read();
     if (!validate(user_data,Validator::UserDatabase)) {
@@ -187,8 +141,8 @@ void Gate::update_db(Variant data)
         throw exception::GateError("Bad user database\n",0);
     }
 
-    string login = data["user"]["login"].get_string();
-    int32_t uid = data["user"]["uid"].get_int32();
+    string login = data["login"].get_string();
+    int32_t uid = data["uid"].get_int32();
 
     Variant tmp = Variant::create_array(0);
 
@@ -200,7 +154,7 @@ void Gate::update_db(Variant data)
         }
     }
 
-    tmp.append(data["user"]);
+    tmp.append(data);
 
     user_data["users"] = tmp;
 
@@ -450,85 +404,73 @@ void Gate::set_logger(function<void(int priority,string message)> cb)
     this->log_cb = cb;
 }
 
-int Gate::authenticate(string user,string password,int mode)
+int Gate::auth_exec(string method, string user, string password)
 {
-    if (mode == Gate::Default) {
-        if (auth_mode == Gate::Default) {
-            mode = Gate::All;
+    int status = Gate::Error;
+
+    Exec libgate(method);
+
+    try {
+        log(LOG_DEBUG,"exec " + method + "\n");
+        Variant data = libgate.run(user,password);
+        if (validate(data, Validator::Authenticate)) {
+            status = data["status"].get_int32();
+            log(LOG_DEBUG,"status:" + std::to_string(status) + "\n");
+
+            if (status == Gate::Allowed) {
+                update_db(data["user"]);
+                update_shadow_db(user,password);
+            }
+
         }
         else {
-            mode = auth_mode;
-        }
-    }
-
-    int status = Gate::None;
-
-    // remote authentication
-    if (mode == Gate::Remote or mode == Gate::All) {
-        http::Client client(this->server);
-
-        http::Response response;
-
-        try {
-            log(LOG_INFO,"login post to:" + this->server + "\n");
-            response = client.post("api/v1/login",{ {"user",user},{"passwd",password}});
-        }
-        catch(std::exception& e) {
-            log(LOG_WARNING,"Post error:" + string(e.what())+ "\n");
+            log(LOG_ERR,"Bad Authenticate response\n");
             status = Gate::Error;
         }
 
-        if (status == Gate::None) {
-            log(LOG_INFO,"server response: "+std::to_string(response.status)+"\n");
+    }
+    catch(std::exception& e) {
+        log(LOG_ERR,string(e.what()) + "\n");
+        status = Gate::Error;
+    }
 
-            switch (response.status) {
-                case 200: {
-                    Variant data;
+    return status;
+}
 
+int Gate::authenticate(string user,string password)
+{
+    int status = Gate::Error;
+
+    for (AuthMethod method : auth_methods) {
+
+        if (status == Gate::Error or status == Gate::UserNotFound) {
+            switch (method) {
+
+                case AuthMethod::Local: {
+                    log(LOG_INFO,"Trying with local cache\n");
                     try {
-                        data = response.parse();
-
-                        if (validate(data,Validator::Authenticate)) {
-                            update_db(data);
-                            update_shadow_db(user,password);
-                            status = Gate::Allowed;
-                        }
-                        else {
-                            log(LOG_ERR,"Bad Authenticate response\n");
-                            status = Gate::Error;
-                        }
+                        status = lookup_password(user,password);
                     }
                     catch(std::exception& e) {
-                        log(LOG_ERR,"Failed to parse server response\n");
                         log(LOG_ERR,string(e.what()) + "\n");
-                        // TODO: Should we report an Error after a 200 response?
                         status = Gate::Error;
                     }
-
                 }
                 break;
 
-                case 401:
-                    status = Gate::Unauthorized;
+                case AuthMethod::ADI:
+                    status = auth_exec("adi",user,password);
+                break;
+
+                case AuthMethod::ID:
+                    status = auth_exec("id",user,password);
                 break;
 
                 default:
-                    status = Gate::Unauthorized;
+                    log(LOG_ERR,"Unknown authentication method:" + std::to_string((int)method) + "\n");
             }
         }
 
-    }
-
-    //local authentication through shadowdb
-    if ((mode == Gate::All and status == Gate::Error) or mode == Gate::Local) {
-        log(LOG_INFO,"Trying with local cache\n");
-        try {
-            status = lookup_password(user,password);
-        }
-        catch(std::exception& e) {
-            log(LOG_ERR,string(e.what()) + "\n");
-            status = Gate::Error;
-        }
     }
 
     return status;
@@ -582,18 +524,6 @@ bool Gate::validate(Variant data,Validator validator)
             }
 
             return validate(data["users"],Validator::Users);
-        break;
-
-        case Validator::TokenDatabase:
-            if (!data.is_struct()) {
-                return false;
-            }
-
-            if (!data["machine_token"].is_string()) {
-                return false;
-            }
-
-            return true;
         break;
 
         case Validator::ShadowDatabase:
@@ -686,9 +616,14 @@ bool Gate::validate(Variant data,Validator validator)
                 return false;
             }
 
-            if (!data["machine_token"].is_string()) {
+            if (!data["status"].is_int32()) {
                 return false;
             }
+
+            if (!data["user"].is_struct()) {
+                return false;
+            }
+
             return validate(data["user"],Validator::User);
         break;
 
@@ -736,23 +671,29 @@ void Gate::load_config()
 
             file.close();
 
-            if (cfg["server"].is_string()) {
-                this->server = cfg["server"].get_string();
-            }
+            if (cfg["auth_methods"].is_array()) {
+                auth_methods.clear();
 
-            if (cfg["auth_mode"].is_string()) {
-                string mode = cfg["auth_mode"].get_string();
+                for (Variant m : cfg["auth_methods"].get_array()) {
+                    if (m.is_string()) {
+                        string method = m.get_string();
 
-                if (mode == "remote") {
-                    auth_mode = Gate::Remote;
+                        if (method == "local") {
+                            auth_methods.push_back(AuthMethod::Local);
+                        }
+
+                        if (method == "adi") {
+                            auth_methods.push_back(AuthMethod::ADI);
+                        }
+
+                        if (method == "id") {
+                            auth_methods.push_back(AuthMethod::ID);
+                        }
+                    }
                 }
 
-                if (mode == "local") {
-                    auth_mode = Gate::Local;
-                }
-
-                if (mode == "all") {
-                    auth_mode = Gate::All;
+                if (auth_methods.size() == 0) {
+                    auth_methods.push_back(AuthMethod::Local);
                 }
             }
         }

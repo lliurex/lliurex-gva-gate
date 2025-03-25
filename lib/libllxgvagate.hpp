@@ -22,10 +22,6 @@
 #define LLX_GVA_GATE_USER_DB_FILE "user.db"
 #define LLX_GVA_GATE_USER_DB_PATH LLX_GVA_GATE_DB_PATH LLX_GVA_GATE_USER_DB_FILE
 
-#define LLX_GVA_GATE_TOKEN_DB_MAGIC "LLX-TOKENDB"
-#define LLX_GVA_GATE_TOKEN_DB_FILE "token.db"
-#define LLX_GVA_GATE_TOKEN_DB_PATH LLX_GVA_GATE_DB_PATH LLX_GVA_GATE_TOKEN_DB_FILE
-
 #define LLX_GVA_GATE_SHADOW_DB_MAGIC "LLX-SHADOWDB"
 #define LLX_GVA_GATE_SHADOW_DB_FILE "shadow.db"
 #define LLX_GVA_GATE_SHADOW_DB_PATH LLX_GVA_GATE_DB_PATH LLX_GVA_GATE_SHADOW_DB_FILE
@@ -34,7 +30,6 @@ namespace lliurex
 {
     enum class Validator {
         UserDatabase,
-        TokenDatabase,
         ShadowDatabase,
         Shadows,
         Shadow,
@@ -50,6 +45,12 @@ namespace lliurex
         NotFound,
         InvalidPassword,
         ExpiredPassword
+    };
+
+    enum class AuthMethod {
+            Local = 0,
+            ADI = 1,
+            ID = 2
     };
 
     namespace exception
@@ -80,14 +81,25 @@ namespace lliurex
         public:
 
         enum AuthStatus {
-            Error = -100,
-            Unauthorized,
+            Allowed = 0,
+
             UserNotFound,
             InvalidPassword,
-            None = 0,
             ExpiredPassword,
-            UserNotAllowed,
-            Allowed
+
+            /* General auth error */
+            Unauthorized,
+            InteractionRequired,
+
+            ServerNotFound = 10,
+            InvalidResponse,
+            BannedApp,
+            BadArguments,
+            AdiNotFound,
+
+            /* General error */
+            Error = 20
+
         };
 
         enum AuthMode {
@@ -100,7 +112,6 @@ namespace lliurex
         Gate();
         Gate(std::function<void(int priority,std::string message)> cb);
 
-
         virtual ~Gate();
 
         bool exists_db();
@@ -108,7 +119,6 @@ namespace lliurex
         void load_config();
 
         void create_db();
-        std::string machine_token();
 
         void update_db(edupals::variant::Variant data);
         void update_shadow_db(std::string user,std::string password);
@@ -119,7 +129,7 @@ namespace lliurex
         edupals::variant::Variant get_cache();
         void purge_shadow_db();
 
-        int authenticate(std::string user,std::string password,int mode = Default);
+        int authenticate(std::string user,std::string password);
 
         bool validate(edupals::variant::Variant data,Validator validator);
 
@@ -127,18 +137,21 @@ namespace lliurex
 
         std::string salt(std::string username);
         std::string hash(std::string password,std::string salt);
+
         protected:
 
+        int auth_exec(std::string method, std::string user, std::string password);
         void log(int priority, std::string message);
 
         std::function<void(int priority,std::string message)> log_cb;
 
         FileDB userdb;
         FileDB shadowdb;
-        FileDB tokendb;
 
         std::string server;
         AuthMode auth_mode;
+
+        std::vector<AuthMethod> auth_methods;
     };
 }
 

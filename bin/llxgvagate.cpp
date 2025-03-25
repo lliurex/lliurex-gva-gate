@@ -64,7 +64,6 @@ void help()
 
     cout<<"commands:"<<endl;
     cout<<"create\t\tcreates database. (root)"<<endl;
-    cout<<"machine-token\t\tgets machine token string. (root)"<<endl;
     cout<<"groups\t\ttlist group database"<<endl;
     cout<<"users\t\ttlist user database"<<endl;
     cout<<"auth\t\tperfoms an user authentication process"<<endl;
@@ -144,19 +143,6 @@ int main(int argc,char* argv[])
         return EX_OK;
     }
 
-    if (cmd == "machine-token") {
-        if (getuid() != 0) {
-            cerr<<"Root user expected"<<endl;
-            return EX_NOPERM;
-        }
-
-        Gate gate(log);
-        gate.open();
-        cout<<gate.machine_token()<<endl;
-
-        return EX_OK;
-    }
-
     if (cmd == "chkpwd") {
         if (isatty(STDIN_FILENO)) {
             cerr<<"This command can not be executed from terminal"<<endl;
@@ -219,7 +205,16 @@ int main(int argc,char* argv[])
 
     if (cmd == "auth") {
 
+        if (getuid() != 0) {
+            cerr<<"Root user expected. Is setuid bit set?"<<endl;
+            return EX_NOPERM;
+        }
+
         Gate gate(log);
+        if (!gate.exists_db()) {
+            gate.create_db();
+        }
+
         gate.open();
         gate.load_config();
 
@@ -274,12 +269,8 @@ int main(int argc,char* argv[])
                 message = "Password has expired";
             break;
 
-            case Gate::UserNotAllowed:
-                message = "User is not allowed";
-            break;
-
             case Gate::Allowed:
-                message = "Authentication is succeeded";
+                message = "Authentication succeeded";
             break;
 
         }

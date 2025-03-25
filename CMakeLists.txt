@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5)
 
 project(lliurex-gva-gate)
 
@@ -13,4 +13,8 @@ install(FILES "llx-gva-gate.cfg"
 
 install(FILES "llx-gva-gate"
     DESTINATION "share/pam-configs"
+)
+
+install(FILES "LliurexGvaGateConfig.cmake"
+    DESTINATION "lib/cmake/LliurexGvaGate"
 )

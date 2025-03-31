@@ -1,4 +1,4 @@
-lliurex-gva-gate (25.0.1.0) noble; urgency=medium
+lliurex-gva-gate (25.0.1.1) jammy; urgency=medium
 
   * truncating domain from username
   * Creating database if needed

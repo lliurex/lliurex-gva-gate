@@ -1,3 +1,10 @@
+lliurex-gva-gate (25.0.1.0) noble; urgency=medium
+
+  * truncating domain from username
+  * Creating database if needed
+
+ -- Enrique Medina Gremaldos <quique@necos.es>  Mon, 31 Mar 2025 10:57:59 +0200
+
 lliurex-gva-gate (25.0.0.0) jammy; urgency=medium
 
   * Updated to new login architecture

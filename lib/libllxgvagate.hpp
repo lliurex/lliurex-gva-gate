@@ -142,6 +142,7 @@ namespace lliurex
 
         int auth_exec(std::string method, std::string user, std::string password);
         void log(int priority, std::string message);
+        std::string truncate_domain(std::string user);
 
         std::function<void(int priority,std::string message)> log_cb;
 

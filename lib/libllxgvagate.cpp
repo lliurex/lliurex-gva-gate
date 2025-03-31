@@ -256,6 +256,8 @@ int Gate::lookup_password(string user,string password)
     int status = Gate::UserNotFound;
     Variant database = shadowdb.read();
 
+    user = truncate_domain(user);
+
     //Validate here
 
     for (size_t n=0;n<database["passwords"].count();n++) {
@@ -437,9 +439,22 @@ int Gate::auth_exec(string method, string user, string password)
     return status;
 }
 
+string Gate::truncate_domain(string user)
+{
+    std::size_t found = user.find("@");
+
+    if (found != std::string::npos) {
+        return user.substr(0,found);
+    }
+
+    return user;
+}
+
 int Gate::authenticate(string user,string password)
 {
     int status = Gate::Error;
+
+    user = truncate_domain(user);
 
     for (AuthMethod method : auth_methods) {
 

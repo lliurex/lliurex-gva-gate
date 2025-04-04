@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <termios.h>
 #include <sysexits.h>
+#include <pwd.h>
 
 #include <iostream>
 #include <string>
@@ -203,7 +204,7 @@ int main(int argc,char* argv[])
         return EX_OK;
     }
 
-    if (cmd == "auth") {
+    if (cmd == "auth" or cmd == "su") {
 
         if (getuid() != 0) {
             cerr<<"Root user expected. Is setuid bit set?"<<endl;
@@ -277,7 +278,28 @@ int main(int argc,char* argv[])
 
         clog<<"status:"<<message<<endl;
 
-        return (status>0) ? EX_OK : EX_DATAERR;
+        if (status == Gate::Allowed and cmd == "su") {
+            struct passwd* user_info;
+
+            user_info = getpwnam(user.c_str());
+
+            if (!user_info) {
+                cerr<<"Failed to fetch pwd structure (Bad NSS configuration?)"<<endl;
+                return EX_DATAERR;
+            }
+
+            pid_t shell = fork();
+
+            if (shell == 0) {
+
+            }
+            else {
+
+            }
+
+        }
+
+        return (status == Gate::Allowed) ? EX_OK : EX_DATAERR;
     }
 
     if (cmd == "cache") {

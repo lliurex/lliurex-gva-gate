@@ -12,6 +12,7 @@
 #include <termios.h>
 #include <sysexits.h>
 #include <pwd.h>
+#include <sys/wait.h>
 
 #include <iostream>
 #include <string>
@@ -291,10 +292,13 @@ int main(int argc,char* argv[])
             pid_t shell = fork();
 
             if (shell == 0) {
-
+                seteuid(user_info->pw_uid);
+                setegid(user_info->pw_gid);
+                execl(user_info->pw_shell,user_info->pw_shell,nullptr);
             }
             else {
-
+                wait(&status);
+                return status;
             }
 
         }

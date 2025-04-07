@@ -285,7 +285,7 @@ int main(int argc,char* argv[])
             user_info = getpwnam(user.c_str());
 
             if (!user_info) {
-                cerr<<"Failed to fetch pwd structure (Bad NSS configuration?)"<<endl;
+                cerr<<"Failed to fetch user data, is NSS configured?"<<endl;
                 return EX_DATAERR;
             }
 
@@ -294,7 +294,8 @@ int main(int argc,char* argv[])
             if (shell == 0) {
                 seteuid(user_info->pw_uid);
                 setegid(user_info->pw_gid);
-                execl(user_info->pw_shell,user_info->pw_shell,nullptr);
+
+                execl(user_info->pw_shell, user_info->pw_shell, nullptr);
             }
             else {
                 wait(&status);

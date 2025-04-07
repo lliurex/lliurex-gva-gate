@@ -672,6 +672,39 @@ string Gate::hash(string password,string salt)
     return string(data);
 }
 
+bool Gate::get_pwnam(string user_name, struct passwd* user_info)
+{
+    if (!user_info) {
+        return false;
+    }
+
+    Variant users = get_users();
+
+
+    for (size_t n=0;n<users.count();n++) {
+        Variant user = users[n];
+
+        if (user["name"].get_string() == user_name) {
+
+            pw_name = user["name"].get_string();
+            pw_dir = user["dir"].get_string();
+            pw_shell = user["shell"].get_string();
+            pw_gecos = user["gecos"].get_string();
+
+            user_info->pw_name = (char*) pw_name.c_str();
+            user_info->pw_uid = user["uid"].get_int32();
+            user_info->pw_gid = user["gid"].get_int32();
+            user_info->pw_dir = (char*)pw_dir.c_str();
+            user_info->pw_shell = (char*)pw_shell.c_str();
+            user_info->pw_gecos = (char*)pw_gecos.c_str();
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void Gate::load_config()
 {
     const std::string cfg_path = "/etc/llx-gva-gate.cfg";

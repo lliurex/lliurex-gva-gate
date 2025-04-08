@@ -112,6 +112,7 @@ void Gate::create_db()
         user_data["users"] = Variant::create_array(0);
         userdb.write(user_data);
         userdb.unlock();
+        userdb.close();
     }
 
     // shadow db
@@ -126,6 +127,7 @@ void Gate::create_db()
         shadow_data["passwords"] = Variant::create_array(0);
         shadowdb.write(shadow_data);
         shadowdb.unlock();
+        shadowdb.clock();
     }
 
 }
@@ -353,7 +355,7 @@ Variant Gate::get_users()
     AutoLock lock(LockMode::Read,&userdb);
     Variant database = userdb.read();
 
-    Variant user_data = userdb.read();
+    //Variant user_data = userdb.read();
     if (!validate(database,Validator::UserDatabase)) {
         log(LOG_ERR,"Bad user database\n");
         throw exception::GateError("Bad user database\n",0);

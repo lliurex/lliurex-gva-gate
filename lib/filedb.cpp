@@ -12,6 +12,7 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <syslog.h>
 
 #include <experimental/filesystem>
 #include <iostream>
@@ -30,7 +31,7 @@ FileDB::FileDB() : db(nullptr)
 {
 }
 
-FileDB::FileDB(string path,string magic) : path(path), format(DBFormat::Json), db(nullptr), magic(magic)
+FileDB::FileDB(string path,string magic) : path(path), format(DBFormat::Bson), db(nullptr), magic(magic)
 {
 
 }
@@ -84,6 +85,7 @@ bool FileDB::open(bool read_only)
         const char* options = (read_only) ? ro : rw;
         db = fopen(path.c_str(),options);
 
+
         if (db) {
             uint32_t header;
             size_t status = fread(&header,4,1,db);
@@ -98,6 +100,7 @@ bool FileDB::open(bool read_only)
 
             fseek(db,0,SEEK_SET);
         }
+
 
     }
 
@@ -153,15 +156,20 @@ void FileDB::unlock()
 
 edupals::variant::Variant FileDB::read()
 {
-    fseek(db,0,SEEK_SET);
-
+    /*
+    int status = fseek(db,0,SEEK_SET);
+    syslog(LOG_INFO,"file:%s",path.c_str());
+    syslog(LOG_INFO,"fseek %d/%d",status,errno);
+    syslog(LOG_INFO,"ftell %d",ftell(db));
+    */
     stringstream ss;
     char buffer[128];
     size_t len;
 
     L0:
     len = fread(buffer,1,128,db);
-
+    syslog(LOG_INFO,"read %d",len);
+    syslog(LOG_INFO,"errno/%d",errno);
     if (len > 0) {
         ss.write((const char*)buffer,len);
         goto L0;
@@ -176,6 +184,15 @@ edupals::variant::Variant FileDB::read()
     if (format == DBFormat::Bson) {
          value = bson::load(ss);
     }
+
+    syslog(LOG_INFO,"is open %d",is_open());
+    syslog(LOG_INFO,"size:%d",ss.str().size());
+    syslog(LOG_INFO,"db %d",db);
+    syslog(LOG_INFO,"format %d",static_cast<int>(format));
+    stringstream so;
+    so<<value;
+    syslog(LOG_INFO,"so:%s",so.str().c_str());
+    syslog(LOG_INFO,"ss:%s",ss.str().c_str());
 
     if (!value.is_struct()) {
         throw runtime_error("FileDB read: Expected struct");

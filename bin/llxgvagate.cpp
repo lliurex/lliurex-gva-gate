@@ -12,6 +12,7 @@
 #include <termios.h>
 #include <sysexits.h>
 #include <pwd.h>
+#include <grp.h>
 #include <sys/wait.h>
 
 #include <iostream>
@@ -217,7 +218,7 @@ int main(int argc,char* argv[])
             gate.create_db();
         }
 
-        gate.open();
+        //gate.open();
         gate.load_config();
 
         string user;
@@ -284,16 +285,24 @@ int main(int argc,char* argv[])
 
             user_info = getpwnam(user.c_str());
 
-            if (!user_info) {
-                cerr<<"Failed to fetch user data, is NSS configured?"<<endl;
+            if (user_info == nullptr) {
+                cerr<<"Failed to fetch data from user "<<user<<", is NSS configured?"<<endl;
+                cerr<<"errno:"<<errno<<endl;
                 return EX_DATAERR;
             }
 
             pid_t shell = fork();
 
             if (shell == 0) {
-                seteuid(user_info->pw_uid);
-                setegid(user_info->pw_gid);
+                initgroups(user_info->pw_name, user_info->pw_gid);
+                setuid(user_info->pw_uid);
+                setgid(user_info->pw_gid);
+
+                setenv("HOME", user_info->pw_dir, 1);
+                setenv("SHELL", user_info->pw_shell, 1);
+                setenv("USER", user_info->pw_name, 1);
+                setenv("LOGNAME", user_info->pw_name, 1);
+                setenv("PATH", "/usr/bin/", 1);
 
                 execl(user_info->pw_shell, user_info->pw_shell, nullptr);
             }

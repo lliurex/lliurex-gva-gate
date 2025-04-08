@@ -192,12 +192,12 @@ int update_db()
     lliurex::Gate gate(log);
 
     //syslog(LOG_INFO,"updating group database\n");
-
+    /*
     if (!gate.open(true)) {
         syslog(LOG_ERR,"Failed to open group database\n");
         return -1;
     }
-
+    */
     try {
         Variant groups = gate.get_groups();
 
@@ -241,12 +241,12 @@ int update_passwd_db()
     lliurex::Gate gate(log);
 
     //syslog(LOG_INFO,"updating user database\n");
-
+    /*
     if (!gate.open(true)) {
         syslog(LOG_ERR,"Failed to open user database\n");
         return -1;
     }
-
+    */
     try {
         Variant users = gate.get_users();
 

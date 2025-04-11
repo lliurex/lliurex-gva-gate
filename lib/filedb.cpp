@@ -101,7 +101,6 @@ bool FileDB::open(bool read_only)
             fseek(db,0,SEEK_SET);
         }
 
-
     }
 
     return (db != nullptr);

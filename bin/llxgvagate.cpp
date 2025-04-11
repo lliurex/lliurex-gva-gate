@@ -136,7 +136,7 @@ int main(int argc,char* argv[])
         }
 
         Gate gate(log);
-        if (!gate.exists_db()) {
+        if (!gate.exists_db(true)) {
             gate.create_db();
         }
         else {
@@ -158,7 +158,9 @@ int main(int argc,char* argv[])
         }
 
         Gate gate(log);
-        gate.open();
+        if (!gate.exists_db(true)) {
+            return EX_DATAERR;
+        }
 
         int status = gate.lookup_password(result.args[2],result.args[3]);
 

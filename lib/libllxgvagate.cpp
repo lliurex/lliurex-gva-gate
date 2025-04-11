@@ -52,82 +52,58 @@ Gate::~Gate()
     //log(LOG_DEBUG,"Gate destructor\n");
 }
 
-bool Gate::exists_db()
+bool Gate::exists_db(bool root)
 {
-    bool status = userdb.exists() and shadowdb.exists();
+    bool status = userdb.exists();
+
+    if (root) {
+        status = status and shadowdb.exists();
+    }
 
     return status;
 }
 
-bool Gate::open(bool noroot)
-{
-    //TODO: think a strategy
-    bool user = false;
-    bool shadow = false;
-
-    if (!userdb.exists()) {
-        log(LOG_ERR,"User database does not exists\n");
-    }
-    else {
-        if (!userdb.is_open()) {
-            user = userdb.open(noroot);
-        }
-    }
-
-    if (!shadowdb.exists()) {
-        log(LOG_ERR,"Shadow database does not exists\n");
-    }
-    else {
-        if (!shadowdb.is_open()) {
-            shadow = shadowdb.open(noroot);
-        }
-    }
-
-    if (noroot) {
-        return user;
-    }
-    else {
-        return user and shadow;
-    }
-}
-
 void Gate::create_db()
 {
-    //TODO: handle exceptions
+
     log(LOG_DEBUG,"Creating databases...\n");
+    try {
+        // checking db dir first
+        const stdfs::path dbdir {LLX_GVA_GATE_DB_PATH};
+        stdfs::create_directories(dbdir);
 
-    // checking db dir first
-    const stdfs::path dbdir {LLX_GVA_GATE_DB_PATH};
-    stdfs::create_directories(dbdir);
+        // user db
+        if (!userdb.exists()) {
+            log(LOG_DEBUG,"Creating user database\n");
+            userdb.create(DBFormat::Bson,S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR);
 
-    // user db
-    if (!userdb.exists()) {
-        log(LOG_DEBUG,"Creating user database\n");
-        userdb.create(DBFormat::Bson,S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR);
+            userdb.open();
 
-        userdb.open();
+            userdb.lock_write();
+            Variant user_data = Variant::create_struct();
+            user_data["users"] = Variant::create_array(0);
+            userdb.write(user_data);
+            userdb.unlock();
+            userdb.close();
+        }
 
-        userdb.lock_write();
-        Variant user_data = Variant::create_struct();
-        user_data["users"] = Variant::create_array(0);
-        userdb.write(user_data);
-        userdb.unlock();
-        userdb.close();
-    }
+        // shadow db
+        if (!shadowdb.exists()) {
+            log(LOG_DEBUG,"Creating shadow database\n");
+            shadowdb.create(DBFormat::Bson,S_IRUSR | S_IRGRP | S_IWUSR);
 
-    // shadow db
-    if (!shadowdb.exists()) {
-        log(LOG_DEBUG,"Creating shadow database\n");
-        shadowdb.create(DBFormat::Bson,S_IRUSR | S_IRGRP | S_IWUSR);
+            shadowdb.open();
 
-        shadowdb.open();
-
-        shadowdb.lock_write();
-        Variant shadow_data = Variant::create_struct();
-        shadow_data["passwords"] = Variant::create_array(0);
-        shadowdb.write(shadow_data);
-        shadowdb.unlock();
-        shadowdb.clock();
+            shadowdb.lock_write();
+            Variant shadow_data = Variant::create_struct();
+            shadow_data["passwords"] = Variant::create_array(0);
+            shadowdb.write(shadow_data);
+            shadowdb.unlock();
+            shadowdb.clock();
+        }
+    catch (std::exception& e) {
+        log(LOG_ERR,"Something went bad creating database\n");
+        log(LO_ERR,"%s\n",e.what());
     }
 
 }

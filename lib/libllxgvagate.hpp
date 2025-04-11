@@ -115,8 +115,7 @@ namespace lliurex
 
         virtual ~Gate();
 
-        bool exists_db();
-        bool open(bool noroot = false);
+        bool exists_db(bool root = false);
         void load_config();
 
         void create_db();

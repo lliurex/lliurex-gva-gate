@@ -65,10 +65,14 @@ namespace lliurex
             {
                 switch (mode) {
                     case LockMode::Read:
+                        target->open(true);
                         target->lock_read();
+
                         break;
                     case LockMode::Write:
+                        target->open();
                         target->lock_write();
+
                         break;
                 }
             }
@@ -76,6 +80,7 @@ namespace lliurex
             ~AutoLock()
             {
                 unlock();
+                target->close();
             }
 
             void unlock()

@@ -52,80 +52,59 @@ Gate::~Gate()
     //log(LOG_DEBUG,"Gate destructor\n");
 }
 
-bool Gate::exists_db()
+bool Gate::exists_db(bool root)
 {
-    bool status = userdb.exists() and shadowdb.exists();
+    bool status = userdb.exists();
+
+    if (root) {
+        status = status and shadowdb.exists();
+    }
 
     return status;
 }
 
-bool Gate::open(bool noroot)
-{
-    //TODO: think a strategy
-    bool user = false;
-    bool shadow = false;
-
-    if (!userdb.exists()) {
-        log(LOG_ERR,"User database does not exists\n");
-    }
-    else {
-        if (!userdb.is_open()) {
-            user = userdb.open(noroot);
-        }
-    }
-
-    if (!shadowdb.exists()) {
-        log(LOG_ERR,"Shadow database does not exists\n");
-    }
-    else {
-        if (!shadowdb.is_open()) {
-            shadow = shadowdb.open(noroot);
-        }
-    }
-
-    if (noroot) {
-        return user;
-    }
-    else {
-        return user and shadow;
-    }
-}
-
 void Gate::create_db()
 {
-    //TODO: handle exceptions
+
     log(LOG_DEBUG,"Creating databases...\n");
+    try {
+        // checking db dir first
+        const stdfs::path dbdir {LLX_GVA_GATE_DB_PATH};
+        stdfs::create_directories(dbdir);
 
-    // checking db dir first
-    const stdfs::path dbdir {LLX_GVA_GATE_DB_PATH};
-    stdfs::create_directories(dbdir);
+        // user db
+        if (!userdb.exists()) {
+            log(LOG_DEBUG,"Creating user database\n");
+            userdb.create(DBFormat::Bson,S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR);
 
-    // user db
-    if (!userdb.exists()) {
-        log(LOG_DEBUG,"Creating user database\n");
-        userdb.create(DBFormat::Bson,S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR);
+            userdb.open();
 
-        userdb.open();
+            userdb.lock_write();
+            Variant user_data = Variant::create_struct();
+            user_data["users"] = Variant::create_array(0);
+            userdb.write(user_data);
+            userdb.unlock();
+            userdb.close();
+        }
 
-        userdb.lock_write();
-        Variant user_data = Variant::create_struct();
-        user_data["users"] = Variant::create_array(0);
-        userdb.write(user_data);
-        userdb.unlock();
+        // shadow db
+        if (!shadowdb.exists()) {
+            log(LOG_DEBUG,"Creating shadow database\n");
+            shadowdb.create(DBFormat::Bson,S_IRUSR | S_IRGRP | S_IWUSR);
+
+            shadowdb.open();
+
+            shadowdb.lock_write();
+            Variant shadow_data = Variant::create_struct();
+            shadow_data["passwords"] = Variant::create_array(0);
+            shadowdb.write(shadow_data);
+            shadowdb.unlock();
+            shadowdb.close();
+        }
     }
-
-    // shadow db
-    if (!shadowdb.exists()) {
-        log(LOG_DEBUG,"Creating shadow database\n");
-        shadowdb.create(DBFormat::Bson,S_IRUSR | S_IRGRP | S_IWUSR);
-
-        shadowdb.open();
-
-        shadowdb.lock_write();
-        Variant shadow_data = Variant::create_struct();
-        shadow_data["passwords"] = Variant::create_array(0);
-        shadowdb.write(shadow_data);
-        shadowdb.unlock();
+    catch (std::exception& e) {
+        log(LOG_ERR,"Something went bad creating database\n");
+        log(LOG_ERR, e.what());
     }
 
 }
@@ -353,7 +332,7 @@ Variant Gate::get_users()
     AutoLock lock(LockMode::Read,&userdb);
     Variant database = userdb.read();
 
-    Variant user_data = userdb.read();
+    //Variant user_data = userdb.read();
     if (!validate(database,Validator::UserDatabase)) {
         log(LOG_ERR,"Bad user database\n");
         throw exception::GateError("Bad user database\n",0);
@@ -670,6 +649,39 @@ string Gate::hash(string password,string salt)
     char* data = crypt(password.c_str(),salt.c_str());
 
     return string(data);
+}
+
+bool Gate::get_pwnam(string user_name, struct passwd* user_info)
+{
+    if (!user_info) {
+        return false;
+    }
+
+    Variant users = get_users();
+
+
+    for (size_t n=0;n<users.count();n++) {
+        Variant user = users[n];
+
+        if (user["name"].get_string() == user_name) {
+
+            pw_name = user["name"].get_string();
+            pw_dir = user["dir"].get_string();
+            pw_shell = user["shell"].get_string();
+            pw_gecos = user["gecos"].get_string();
+
+            user_info->pw_name = (char*) pw_name.c_str();
+            user_info->pw_uid = user["uid"].get_int32();
+            user_info->pw_gid = user["gid"].get_int32();
+            user_info->pw_dir = (char*)pw_dir.c_str();
+            user_info->pw_shell = (char*)pw_shell.c_str();
+            user_info->pw_gecos = (char*)pw_gecos.c_str();
+
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void Gate::load_config()

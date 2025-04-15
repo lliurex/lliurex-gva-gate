@@ -10,6 +10,7 @@
 #include <variant.hpp>
 
 #include <syslog.h>
+#include <pwd.h>
 
 #include <cstdio>
 #include <functional>
@@ -114,8 +115,7 @@ namespace lliurex
 
         virtual ~Gate();
 
-        bool exists_db();
-        bool open(bool noroot = false);
+        bool exists_db(bool root = false);
         void load_config();
 
         void create_db();
@@ -138,6 +138,8 @@ namespace lliurex
         std::string salt(std::string username);
         std::string hash(std::string password,std::string salt);
 
+        bool get_pwnam(std::string user_name, struct passwd* user_info);
+
         protected:
 
         int auth_exec(std::string method, std::string user, std::string password);
@@ -151,6 +153,12 @@ namespace lliurex
 
         std::string server;
         AuthMode auth_mode;
+
+        // used for pwd pointer storage
+        std::string pw_name;
+        std::string pw_dir;
+        std::string pw_shell;
+        std::string pw_gecos;
 
         std::vector<AuthMethod> auth_methods;
     };

@@ -11,6 +11,9 @@
 #include <unistd.h>
 #include <termios.h>
 #include <sysexits.h>
+#include <pwd.h>
+#include <grp.h>
+#include <sys/wait.h>
 
 #include <iostream>
 #include <string>
@@ -133,7 +136,7 @@ int main(int argc,char* argv[])
         }
 
         Gate gate(log);
-        if (!gate.exists_db()) {
+        if (!gate.exists_db(true)) {
             gate.create_db();
         }
         else {
@@ -155,7 +158,9 @@ int main(int argc,char* argv[])
         }
 
         Gate gate(log);
-        gate.open();
+        if (!gate.exists_db(true)) {
+            return EX_DATAERR;
+        }
 
         int status = gate.lookup_password(result.args[2],result.args[3]);
 
@@ -164,7 +169,12 @@ int main(int argc,char* argv[])
 
     if (cmd == "groups") {
         Gate gate(log);
-        gate.open(true);
+
+        if (!gate.exists_db()) {
+            /* no need to panic, this may happen */
+            return EX_OK;
+        }
+
         Variant groups = gate.get_groups();
         for (int n=0;n<groups.count();n++) {
             cout<<groups[n]["name"].get_string()<<":"<<groups[n]["gid"]<<":";
@@ -187,7 +197,12 @@ int main(int argc,char* argv[])
 
     if (cmd == "users") {
         Gate gate(log);
-        gate.open(true);
+
+        if (!gate.exists_db()) {
+            /* no need to panic, this may happen */
+            return EX_OK;
+        }
+
         Variant users = gate.get_users();
         for (int n=0;n<users.count();n++) {
             Variant passwd = users[n];
@@ -203,7 +218,7 @@ int main(int argc,char* argv[])
         return EX_OK;
     }
 
-    if (cmd == "auth") {
+    if (cmd == "auth" or cmd == "su") {
 
         if (getuid() != 0) {
             cerr<<"Root user expected. Is setuid bit set?"<<endl;
@@ -211,11 +226,11 @@ int main(int argc,char* argv[])
         }
 
         Gate gate(log);
-        if (!gate.exists_db()) {
+        if (!gate.exists_db(true)) {
             gate.create_db();
         }
 
-        gate.open();
+        //gate.open();
         gate.load_config();
 
         string user;
@@ -277,7 +292,40 @@ int main(int argc,char* argv[])
 
         clog<<"status:"<<message<<endl;
 
-        return (status>0) ? EX_OK : EX_DATAERR;
+        if (status == Gate::Allowed and cmd == "su") {
+            struct passwd* user_info;
+
+            user_info = getpwnam(user.c_str());
+
+            if (user_info == nullptr) {
+                cerr<<"Failed to fetch data from user "<<user<<", is NSS configured?"<<endl;
+                cerr<<"errno:"<<errno<<endl;
+                return EX_DATAERR;
+            }
+
+            pid_t shell = fork();
+
+            if (shell == 0) {
+                initgroups(user_info->pw_name, user_info->pw_gid);
+                setuid(user_info->pw_uid);
+                setgid(user_info->pw_gid);
+
+                setenv("HOME", user_info->pw_dir, 1);
+                setenv("SHELL", user_info->pw_shell, 1);
+                setenv("USER", user_info->pw_name, 1);
+                setenv("LOGNAME", user_info->pw_name, 1);
+                setenv("PATH", "/usr/bin/", 1);
+
+                execl(user_info->pw_shell, user_info->pw_shell, nullptr);
+            }
+            else {
+                wait(&status);
+                return status;
+            }
+
+        }
+
+        return (status == Gate::Allowed) ? EX_OK : EX_DATAERR;
     }
 
     if (cmd == "cache") {
@@ -294,7 +342,10 @@ int main(int argc,char* argv[])
         if (cmd2 == "list") {
 
             Gate gate(log);
-            gate.open();
+            if (!gate.exists_db(true)) {
+                /* no need to panic, this may happen */
+                return EX_OK;
+            }
 
             Variant cache = gate.get_cache();
 
@@ -320,7 +371,10 @@ int main(int argc,char* argv[])
         else {
             if (cmd2 == "purge") {
                 Gate gate(log);
-                gate.open();
+                if (!gate.exists_db()) {
+                    /* no need to panic, this may happen */
+                    return EX_OK;
+                }
 
                 gate.purge_shadow_db();
 

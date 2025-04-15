@@ -96,11 +96,12 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
         if (geteuid() == 0) {
             Gate gate(log);
             gate.create_db();
+            /*
             if(!gate.open()) {
                 pam_syslog(pamh,LOG_ERR,"Can't access gate databases\n");
                 return PAM_AUTH_ERR;
             }
-
+            */
             // loads config: server address, auth_mode
             gate.load_config();
 

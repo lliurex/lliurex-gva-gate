@@ -193,8 +193,8 @@ int update_db()
 
     //syslog(LOG_INFO,"updating group database\n");
 
-    if (!gate.open(true)) {
-        syslog(LOG_ERR,"Failed to open group database\n");
+    if (!gate.exists_db()) {
+        //syslog(LOG_ERR,"Failed to open group database\n");
         return -1;
     }
 
@@ -242,8 +242,8 @@ int update_passwd_db()
 
     //syslog(LOG_INFO,"updating user database\n");
 
-    if (!gate.open(true)) {
-        syslog(LOG_ERR,"Failed to open user database\n");
+    if (!gate.exists_db()) {
+        //syslog(LOG_ERR,"Failed to open user database\n");
         return -1;
     }
 

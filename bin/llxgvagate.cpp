@@ -169,7 +169,12 @@ int main(int argc,char* argv[])
 
     if (cmd == "groups") {
         Gate gate(log);
-        gate.open(true);
+
+        if (!gate.exists_db()) {
+            /* no need to panic, this may happen */
+            return EX_OK;
+        }
+
         Variant groups = gate.get_groups();
         for (int n=0;n<groups.count();n++) {
             cout<<groups[n]["name"].get_string()<<":"<<groups[n]["gid"]<<":";
@@ -192,7 +197,12 @@ int main(int argc,char* argv[])
 
     if (cmd == "users") {
         Gate gate(log);
-        gate.open(true);
+
+        if (!gate.exists_db()) {
+            /* no need to panic, this may happen */
+            return EX_OK;
+        }
+
         Variant users = gate.get_users();
         for (int n=0;n<users.count();n++) {
             Variant passwd = users[n];
@@ -216,7 +226,7 @@ int main(int argc,char* argv[])
         }
 
         Gate gate(log);
-        if (!gate.exists_db()) {
+        if (!gate.exists_db(true)) {
             gate.create_db();
         }
 
@@ -332,7 +342,10 @@ int main(int argc,char* argv[])
         if (cmd2 == "list") {
 
             Gate gate(log);
-            gate.open();
+            if (!gate.exists_db(true)) {
+                /* no need to panic, this may happen */
+                return EX_OK;
+            }
 
             Variant cache = gate.get_cache();
 
@@ -358,7 +371,10 @@ int main(int argc,char* argv[])
         else {
             if (cmd2 == "purge") {
                 Gate gate(log);
-                gate.open();
+                if (!gate.exists_db()) {
+                    /* no need to panic, this may happen */
+                    return EX_OK;
+                }
 
                 gate.purge_shadow_db();
 

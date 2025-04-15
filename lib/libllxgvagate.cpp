@@ -99,11 +99,12 @@ void Gate::create_db()
             shadow_data["passwords"] = Variant::create_array(0);
             shadowdb.write(shadow_data);
             shadowdb.unlock();
-            shadowdb.clock();
+            shadowdb.close();
         }
+    }
     catch (std::exception& e) {
         log(LOG_ERR,"Something went bad creating database\n");
-        log(LO_ERR,"%s\n",e.what());
+        log(LOG_ERR, e.what());
     }
 
 }

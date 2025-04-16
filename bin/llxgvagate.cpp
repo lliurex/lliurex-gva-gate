@@ -290,7 +290,9 @@ int main(int argc,char* argv[])
 
         }
 
-        clog<<"status:"<<message<<endl;
+        if (cmd == "auth") {
+            clog<<"status:"<<message<<endl;
+        }
 
         if (status == Gate::Allowed and cmd == "su") {
             struct passwd* user_info;
@@ -306,9 +308,13 @@ int main(int argc,char* argv[])
             pid_t shell = fork();
 
             if (shell == 0) {
+
+                setgroups(0, nullptr);
                 initgroups(user_info->pw_name, user_info->pw_gid);
-                setuid(user_info->pw_uid);
                 setgid(user_info->pw_gid);
+                setegid(user_info->pw_gid);
+                setuid(user_info->pw_uid);
+                seteuid(user_info->pw_uid);
 
                 setenv("HOME", user_info->pw_dir, 1);
                 setenv("SHELL", user_info->pw_shell, 1);

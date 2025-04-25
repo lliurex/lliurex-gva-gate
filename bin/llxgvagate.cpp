@@ -220,7 +220,7 @@ int main(int argc,char* argv[])
 
     if (cmd == "auth" or cmd == "su") {
 
-        if (getuid() != 0) {
+        if (geteuid() != 0) {
             cerr<<"Root user expected. Is setuid bit set?"<<endl;
             return EX_NOPERM;
         }

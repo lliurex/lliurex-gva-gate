@@ -217,7 +217,8 @@ int update_db()
             lliurex::groups.push_back(grp);
         }
     }
-    catch (std::exception& e) {
+    catch (...) {
+        syslog(LOG_ERR,"Failed to open user database\n");
         return -1;
     }
 
@@ -266,7 +267,8 @@ int update_passwd_db()
         }
 
     }
-    catch (std::exception& e) {
+    catch (...) {
+        syslog(LOG_ERR,"Failed to open password database\n");
         return -1;
     }
 

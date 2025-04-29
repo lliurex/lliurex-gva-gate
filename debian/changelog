@@ -1,3 +1,9 @@
+lliurex-gva-gate (25.0.6.0) noble; urgency=medium
+
+  * Added an experimental apparmor rule to avoid cups or rsyslog crashing
+
+ -- Enrique Medina Gremaldos <quique@necos.es>  Tue, 29 Apr 2025 22:43:37 +0200
+
 lliurex-gva-gate (25.0.5.0) noble; urgency=medium
 
   * Fixed auth command 

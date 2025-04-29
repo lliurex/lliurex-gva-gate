@@ -11,6 +11,10 @@ install(FILES "llx-gva-gate.cfg"
     DESTINATION "/etc/"
 )
 
+install(FILES "llx-gva-gate.apparmor"
+    DESTINATION "/etc/apparmor.d/abstractions/base.d/"
+)
+
 install(FILES "llx-gva-gate"
     DESTINATION "share/pam-configs"
 )

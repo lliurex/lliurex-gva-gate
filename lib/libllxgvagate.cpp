@@ -115,9 +115,10 @@ void Gate::update_db(Variant data)
     AutoLock user_lock(LockMode::Write,&userdb);
 
     Variant user_data = userdb.read();
-    if (!validate(user_data,Validator::UserDatabase)) {
+    string what;
+    if (!validate(user_data,Validator::UserDatabase, what)) {
         log(LOG_ERR,"Bad user database\n");
-        throw exception::GateError("Bad user database\n",0);
+        throw exception::GateError("Bad user database:\n" + what + "\n",0);
     }
 
     string login = data["login"].get_string();
@@ -278,10 +279,11 @@ Variant Gate::get_groups()
     AutoLock lock(LockMode::Read,&userdb);
 
     Variant database = userdb.read();
+    string what;
 
-    if (!validate(database,Validator::UserDatabase)) {
+    if (!validate(database,Validator::UserDatabase, what)) {
         log(LOG_ERR,"Bad user database\n");
-        throw exception::GateError("Bad user database\n",0);
+        throw exception::GateError("Bad user database\n:"+ what+ "\n",0);
     }
 
     groups = Variant::create_array(0);
@@ -333,9 +335,10 @@ Variant Gate::get_users()
     Variant database = userdb.read();
 
     //Variant user_data = userdb.read();
-    if (!validate(database,Validator::UserDatabase)) {
+    string what;
+    if (!validate(database,Validator::UserDatabase, what)) {
         log(LOG_ERR,"Bad user database\n");
-        throw exception::GateError("Bad user database\n",0);
+        throw exception::GateError("Bad user database\n:" + what + "\n",0);
     }
 
     users = Variant::create_array(0);
@@ -394,7 +397,8 @@ int Gate::auth_exec(string method, string user, string password)
     try {
         log(LOG_DEBUG,"exec " + method + "\n");
         Variant data = libgate.run(user,password);
-        if (validate(data, Validator::Authenticate)) {
+        string what;
+        if (validate(data, Validator::Authenticate, what)) {
             status = data["status"].get_int32();
             log(LOG_DEBUG,"status:" + std::to_string(status) + "\n");
 
@@ -405,7 +409,7 @@ int Gate::auth_exec(string method, string user, string password)
 
         }
         else {
-            log(LOG_ERR,"Bad Authenticate response\n");
+            log(LOG_ERR,"Bad Authenticate response:\n" + what + "\n");
             status = Gate::Error;
         }
 
@@ -477,17 +481,20 @@ void Gate::log(int priority, string message)
     }
 }
 
-bool Gate::validate(Variant data,Validator validator)
+bool Gate::validate(Variant data,Validator validator, string& what)
 {
     switch (validator) {
 
         case Validator::Groups:
             if (!data.is_array()) {
+                what = "Groups type is not Array";
                 return false;
             }
 
             for (size_t n=0;n<data.count();n++) {
-                if (!validate(data[n],Validator::Group)) {
+                string cwhat;
+                if (!validate(data[n],Validator::Group, cwhat)) {
+                    what = "Bad Group format:" + cwhat;
                     return false;
                 }
             }
@@ -498,14 +505,17 @@ bool Gate::validate(Variant data,Validator validator)
 
         case Validator::Group:
             if (!data.is_struct()) {
+                what = "Group type is not Struct";
                 return false;
             }
 
             if (!data["name"].is_string()) {
+                what = "Expected field name with type String";
                 return false;
             }
 
             if (!data["gid"].is_int32()) {
+                what = "Expected field gid with type Int32";
                 return false;
             }
 
@@ -514,27 +524,32 @@ bool Gate::validate(Variant data,Validator validator)
 
         case Validator::UserDatabase:
             if (!data.is_struct()) {
+                what = "UserDatabse type is not Struct";
                 return false;
             }
 
-            return validate(data["users"],Validator::Users);
+            return validate(data["users"],Validator::Users, what);
         break;
 
         case Validator::ShadowDatabase:
             if (!data.is_struct()) {
+                what = "ShadowDatabase type is not Struct";
                 return false;
             }
 
-            return validate(data["passwords"],Validator::Shadows);
+            return validate(data["passwords"],Validator::Shadows, what);
         break;
 
         case Validator::Shadows:
             if (!data.is_array()) {
+                what = "Shadows type is not Array";
                 return false;
             }
 
             for (size_t n=0;n<data.count();n++) {
-                if (!validate(data[n],Validator::Shadow)) {
+                string cwhat;
+                if (!validate(data[n],Validator::Shadow, cwhat)) {
+                    what = "Bad Shadow format:" + cwhat;
                     return false;
                 }
             }
@@ -544,18 +559,22 @@ bool Gate::validate(Variant data,Validator validator)
 
         case Validator::Shadow:
             if (!data.is_struct()) {
+                what = "Shadow type is not a Struct";
                 return false;
             }
 
             if (!data["name"].is_string()) {
+                what = "Expected field name with type String";
                 return false;
             }
 
             if (!data["key"].is_string()) {
+                what = "Expected field key with type String";
                 return false;
             }
 
             if (!data["expire"].is_int32()) {
+                what = "Expected field expire with type Int32";
                 return false;
             }
 
@@ -564,11 +583,12 @@ bool Gate::validate(Variant data,Validator validator)
 
         case Validator::Users:
             if (!data.is_array()) {
+                what = "Users type is not a Struct";
                 return false;
             }
 
             for (size_t n=0;n<data.count();n++) {
-                return validate(data[n],Validator::User);
+                return validate(data[n],Validator::User, what);
             }
 
             return true;
@@ -576,52 +596,62 @@ bool Gate::validate(Variant data,Validator validator)
 
         case Validator::User:
             if (!data["login"].is_string()) {
+                what = "Expected field login with type String";
                 return false;
             }
 
             if (!data["uid"].is_int32()) {
+                what = "Expected field uid with type Int32";
                 return false;
             }
 
-            if (!validate(data["gid"],Validator::Group)) {
+            if (!validate(data["gid"],Validator::Group, what)) {
                 return false;
             }
 
             if (!data["name"].is_string()) {
+                what = "Expected field name with type String";
                 return false;
             }
 
             if (!data["surname"].is_string()) {
+                what = "Expected field surname with type String";
                 return false;
             }
 
             if (!data["home"].is_string()) {
+                what = "Expected field home with type String";
                 return false;
             }
 
             if (!data["shell"].is_string()) {
+                what = "Expected field shell with type String";
                 return false;
             }
-            return validate(data["groups"],Validator::Groups);
+            return validate(data["groups"],Validator::Groups, what);
         break;
 
         case Validator::Authenticate:
             if (!data.is_struct()) {
+                what = "Authenticate type is not a Struct";
                 return false;
             }
 
             if (!data["status"].is_int32()) {
+                what = "Expected field status with type Int32";
                 return false;
             }
 
             if (!data["user"].is_struct()) {
+                what = "Expected field user with type Struct";
                 return false;
             }
 
-            return validate(data["user"],Validator::User);
+            return validate(data["user"],Validator::User,what);
         break;
 
         default:
+            what = "Unknown validation";
             return false;
     }
 }

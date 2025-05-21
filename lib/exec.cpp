@@ -9,7 +9,7 @@
 #include <json.hpp>
 
 #include <unistd.h>
-
+#include <iostream>
 #include <sstream>
 
 #define LIB_EXEC_PATH "/usr/lib/gva-gate/libgva"
@@ -52,10 +52,12 @@ Variant Exec::run(string user, string password)
         }
         close(out_fd);
         status = child.wait();
+        clog<<"exec status:"<<status<<endl;
 
         response["status"] = status;
         if (status == Gate::Allowed) {
             Variant exec_response = json::load(data);
+            clog<<exec_response<<endl;
             response["user"] = exec_response;
         }
     }

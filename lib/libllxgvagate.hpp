@@ -131,7 +131,7 @@ namespace lliurex
 
         int authenticate(std::string user,std::string password);
 
-        bool validate(edupals::variant::Variant data,Validator validator);
+        bool validate(edupals::variant::Variant data,Validator validator,std::string& what);
 
         void set_logger(std::function<void(int priority,std::string message)> cb);
 

@@ -1,3 +1,9 @@
+lliurex-gva-gate (25.0.6.0) jammy; urgency=medium
+
+  * Added an experimental apparmor rule to avoid cups or rsyslog crashing
+
+ -- Enrique Medina Gremaldos <quique@necos.es>  Thu, 03 Jul 2025 16:39:17 +0200
+
 lliurex-gva-gate (25.0.1.1) jammy; urgency=medium
 
   * truncating domain from username

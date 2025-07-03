@@ -7,3 +7,6 @@
 %:
 	dh $@
 	
+override_dh_fixperms:
+	dh_fixperms
+	chmod 4755 debian/llxgvagate-bin/usr/bin/llx-gva-gate

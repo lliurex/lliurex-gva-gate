@@ -10,6 +10,7 @@
 #include <variant.hpp>
 
 #include <syslog.h>
+#include <pwd.h>
 
 #include <cstdio>
 #include <functional>
@@ -114,8 +115,7 @@ namespace lliurex
 
         virtual ~Gate();
 
-        bool exists_db();
-        bool open(bool noroot = false);
+        bool exists_db(bool root = false);
         void load_config();
 
         void create_db();
@@ -131,12 +131,14 @@ namespace lliurex
 
         int authenticate(std::string user,std::string password);
 
-        bool validate(edupals::variant::Variant data,Validator validator);
+        bool validate(edupals::variant::Variant data,Validator validator,std::string& what);
 
         void set_logger(std::function<void(int priority,std::string message)> cb);
 
         std::string salt(std::string username);
         std::string hash(std::string password,std::string salt);
+
+        bool get_pwnam(std::string user_name, struct passwd* user_info);
 
         protected:
 
@@ -151,6 +153,12 @@ namespace lliurex
 
         std::string server;
         AuthMode auth_mode;
+
+        // used for pwd pointer storage
+        std::string pw_name;
+        std::string pw_dir;
+        std::string pw_shell;
+        std::string pw_gecos;
 
         std::vector<AuthMethod> auth_methods;
     };

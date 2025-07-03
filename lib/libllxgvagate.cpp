@@ -52,80 +52,59 @@ Gate::~Gate()
     //log(LOG_DEBUG,"Gate destructor\n");
 }
 
-bool Gate::exists_db()
+bool Gate::exists_db(bool root)
 {
-    bool status = userdb.exists() and shadowdb.exists();
+    bool status = userdb.exists();
+
+    if (root) {
+        status = status and shadowdb.exists();
+    }
 
     return status;
 }
 
-bool Gate::open(bool noroot)
-{
-    //TODO: think a strategy
-    bool user = false;
-    bool shadow = false;
-
-    if (!userdb.exists()) {
-        log(LOG_ERR,"User database does not exists\n");
-    }
-    else {
-        if (!userdb.is_open()) {
-            user = userdb.open(noroot);
-        }
-    }
-
-    if (!shadowdb.exists()) {
-        log(LOG_ERR,"Shadow database does not exists\n");
-    }
-    else {
-        if (!shadowdb.is_open()) {
-            shadow = shadowdb.open(noroot);
-        }
-    }
-
-    if (noroot) {
-        return user;
-    }
-    else {
-        return user and shadow;
-    }
-}
-
 void Gate::create_db()
 {
-    //TODO: handle exceptions
+
     log(LOG_DEBUG,"Creating databases...\n");
+    try {
+        // checking db dir first
+        const stdfs::path dbdir {LLX_GVA_GATE_DB_PATH};
+        stdfs::create_directories(dbdir);
 
-    // checking db dir first
-    const stdfs::path dbdir {LLX_GVA_GATE_DB_PATH};
-    stdfs::create_directories(dbdir);
+        // user db
+        if (!userdb.exists()) {
+            log(LOG_DEBUG,"Creating user database\n");
+            userdb.create(DBFormat::Bson,S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR);
 
-    // user db
-    if (!userdb.exists()) {
-        log(LOG_DEBUG,"Creating user database\n");
-        userdb.create(DBFormat::Bson,S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR);
+            userdb.open();
 
-        userdb.open();
+            userdb.lock_write();
+            Variant user_data = Variant::create_struct();
+            user_data["users"] = Variant::create_array(0);
+            userdb.write(user_data);
+            userdb.unlock();
+            userdb.close();
+        }
 
-        userdb.lock_write();
-        Variant user_data = Variant::create_struct();
-        user_data["users"] = Variant::create_array(0);
-        userdb.write(user_data);
-        userdb.unlock();
+        // shadow db
+        if (!shadowdb.exists()) {
+            log(LOG_DEBUG,"Creating shadow database\n");
+            shadowdb.create(DBFormat::Bson,S_IRUSR | S_IRGRP | S_IWUSR);
+
+            shadowdb.open();
+
+            shadowdb.lock_write();
+            Variant shadow_data = Variant::create_struct();
+            shadow_data["passwords"] = Variant::create_array(0);
+            shadowdb.write(shadow_data);
+            shadowdb.unlock();
+            shadowdb.close();
+        }
     }
-
-    // shadow db
-    if (!shadowdb.exists()) {
-        log(LOG_DEBUG,"Creating shadow database\n");
-        shadowdb.create(DBFormat::Bson,S_IRUSR | S_IRGRP | S_IWUSR);
-
-        shadowdb.open();
-
-        shadowdb.lock_write();
-        Variant shadow_data = Variant::create_struct();
-        shadow_data["passwords"] = Variant::create_array(0);
-        shadowdb.write(shadow_data);
-        shadowdb.unlock();
+    catch (std::exception& e) {
+        log(LOG_ERR,"Something went bad creating database\n");
+        log(LOG_ERR, e.what());
     }
 
 }
@@ -136,9 +115,10 @@ void Gate::update_db(Variant data)
     AutoLock user_lock(LockMode::Write,&userdb);
 
     Variant user_data = userdb.read();
-    if (!validate(user_data,Validator::UserDatabase)) {
+    string what;
+    if (!validate(user_data,Validator::UserDatabase, what)) {
         log(LOG_ERR,"Bad user database\n");
-        throw exception::GateError("Bad user database\n",0);
+        throw exception::GateError("Bad user database:\n" + what + "\n",0);
     }
 
     string login = data["login"].get_string();
@@ -299,10 +279,11 @@ Variant Gate::get_groups()
     AutoLock lock(LockMode::Read,&userdb);
 
     Variant database = userdb.read();
+    string what;
 
-    if (!validate(database,Validator::UserDatabase)) {
+    if (!validate(database,Validator::UserDatabase, what)) {
         log(LOG_ERR,"Bad user database\n");
-        throw exception::GateError("Bad user database\n",0);
+        throw exception::GateError("Bad user database\n:"+ what+ "\n",0);
     }
 
     groups = Variant::create_array(0);
@@ -353,10 +334,11 @@ Variant Gate::get_users()
     AutoLock lock(LockMode::Read,&userdb);
     Variant database = userdb.read();
 
-    Variant user_data = userdb.read();
-    if (!validate(database,Validator::UserDatabase)) {
+    //Variant user_data = userdb.read();
+    string what;
+    if (!validate(database,Validator::UserDatabase, what)) {
         log(LOG_ERR,"Bad user database\n");
-        throw exception::GateError("Bad user database\n",0);
+        throw exception::GateError("Bad user database\n:" + what + "\n",0);
     }
 
     users = Variant::create_array(0);
@@ -415,7 +397,8 @@ int Gate::auth_exec(string method, string user, string password)
     try {
         log(LOG_DEBUG,"exec " + method + "\n");
         Variant data = libgate.run(user,password);
-        if (validate(data, Validator::Authenticate)) {
+        string what;
+        if (validate(data, Validator::Authenticate, what)) {
             status = data["status"].get_int32();
             log(LOG_DEBUG,"status:" + std::to_string(status) + "\n");
 
@@ -426,7 +409,7 @@ int Gate::auth_exec(string method, string user, string password)
 
         }
         else {
-            log(LOG_ERR,"Bad Authenticate response\n");
+            log(LOG_ERR,"Bad Authenticate response:\n" + what + "\n");
             status = Gate::Error;
         }
 
@@ -498,17 +481,20 @@ void Gate::log(int priority, string message)
     }
 }
 
-bool Gate::validate(Variant data,Validator validator)
+bool Gate::validate(Variant data,Validator validator, string& what)
 {
     switch (validator) {
 
         case Validator::Groups:
             if (!data.is_array()) {
+                what = "Groups type is not Array";
                 return false;
             }
 
             for (size_t n=0;n<data.count();n++) {
-                if (!validate(data[n],Validator::Group)) {
+                string cwhat;
+                if (!validate(data[n],Validator::Group, cwhat)) {
+                    what = "Bad Group format:" + cwhat;
                     return false;
                 }
             }
@@ -519,14 +505,17 @@ bool Gate::validate(Variant data,Validator validator)
 
         case Validator::Group:
             if (!data.is_struct()) {
+                what = "Group type is not Struct";
                 return false;
             }
 
             if (!data["name"].is_string()) {
+                what = "Expected field name with type String";
                 return false;
             }
 
             if (!data["gid"].is_int32()) {
+                what = "Expected field gid with type Int32";
                 return false;
             }
 
@@ -535,27 +524,32 @@ bool Gate::validate(Variant data,Validator validator)
 
         case Validator::UserDatabase:
             if (!data.is_struct()) {
+                what = "UserDatabse type is not Struct";
                 return false;
             }
 
-            return validate(data["users"],Validator::Users);
+            return validate(data["users"],Validator::Users, what);
         break;
 
         case Validator::ShadowDatabase:
             if (!data.is_struct()) {
+                what = "ShadowDatabase type is not Struct";
                 return false;
             }
 
-            return validate(data["passwords"],Validator::Shadows);
+            return validate(data["passwords"],Validator::Shadows, what);
         break;
 
         case Validator::Shadows:
             if (!data.is_array()) {
+                what = "Shadows type is not Array";
                 return false;
             }
 
             for (size_t n=0;n<data.count();n++) {
-                if (!validate(data[n],Validator::Shadow)) {
+                string cwhat;
+                if (!validate(data[n],Validator::Shadow, cwhat)) {
+                    what = "Bad Shadow format:" + cwhat;
                     return false;
                 }
             }
@@ -565,18 +559,22 @@ bool Gate::validate(Variant data,Validator validator)
 
         case Validator::Shadow:
             if (!data.is_struct()) {
+                what = "Shadow type is not a Struct";
                 return false;
             }
 
             if (!data["name"].is_string()) {
+                what = "Expected field name with type String";
                 return false;
             }
 
             if (!data["key"].is_string()) {
+                what = "Expected field key with type String";
                 return false;
             }
 
             if (!data["expire"].is_int32()) {
+                what = "Expected field expire with type Int32";
                 return false;
             }
 
@@ -585,11 +583,12 @@ bool Gate::validate(Variant data,Validator validator)
 
         case Validator::Users:
             if (!data.is_array()) {
+                what = "Users type is not a Struct";
                 return false;
             }
 
             for (size_t n=0;n<data.count();n++) {
-                return validate(data[n],Validator::User);
+                return validate(data[n],Validator::User, what);
             }
 
             return true;
@@ -597,52 +596,62 @@ bool Gate::validate(Variant data,Validator validator)
 
         case Validator::User:
             if (!data["login"].is_string()) {
+                what = "Expected field login with type String";
                 return false;
             }
 
             if (!data["uid"].is_int32()) {
+                what = "Expected field uid with type Int32";
                 return false;
             }
 
-            if (!validate(data["gid"],Validator::Group)) {
+            if (!validate(data["gid"],Validator::Group, what)) {
                 return false;
             }
 
             if (!data["name"].is_string()) {
+                what = "Expected field name with type String";
                 return false;
             }
 
             if (!data["surname"].is_string()) {
+                what = "Expected field surname with type String";
                 return false;
             }
 
             if (!data["home"].is_string()) {
+                what = "Expected field home with type String";
                 return false;
             }
 
             if (!data["shell"].is_string()) {
+                what = "Expected field shell with type String";
                 return false;
             }
-            return validate(data["groups"],Validator::Groups);
+            return validate(data["groups"],Validator::Groups, what);
         break;
 
         case Validator::Authenticate:
             if (!data.is_struct()) {
+                what = "Authenticate type is not a Struct";
                 return false;
             }
 
             if (!data["status"].is_int32()) {
+                what = "Expected field status with type Int32";
                 return false;
             }
 
             if (!data["user"].is_struct()) {
+                what = "Expected field user with type Struct";
                 return false;
             }
 
-            return validate(data["user"],Validator::User);
+            return validate(data["user"],Validator::User,what);
         break;
 
         default:
+            what = "Unknown validation";
             return false;
     }
 }
@@ -670,6 +679,39 @@ string Gate::hash(string password,string salt)
     char* data = crypt(password.c_str(),salt.c_str());
 
     return string(data);
+}
+
+bool Gate::get_pwnam(string user_name, struct passwd* user_info)
+{
+    if (!user_info) {
+        return false;
+    }
+
+    Variant users = get_users();
+
+
+    for (size_t n=0;n<users.count();n++) {
+        Variant user = users[n];
+
+        if (user["name"].get_string() == user_name) {
+
+            pw_name = user["name"].get_string();
+            pw_dir = user["dir"].get_string();
+            pw_shell = user["shell"].get_string();
+            pw_gecos = user["gecos"].get_string();
+
+            user_info->pw_name = (char*) pw_name.c_str();
+            user_info->pw_uid = user["uid"].get_int32();
+            user_info->pw_gid = user["gid"].get_int32();
+            user_info->pw_dir = (char*)pw_dir.c_str();
+            user_info->pw_shell = (char*)pw_shell.c_str();
+            user_info->pw_gecos = (char*)pw_gecos.c_str();
+
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void Gate::load_config()

@@ -12,6 +12,7 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <syslog.h>
 
 #include <experimental/filesystem>
 #include <iostream>
@@ -30,7 +31,7 @@ FileDB::FileDB() : db(nullptr)
 {
 }
 
-FileDB::FileDB(string path,string magic) : path(path), format(DBFormat::Json), db(nullptr), magic(magic)
+FileDB::FileDB(string path,string magic) : path(path), format(DBFormat::Bson), db(nullptr), magic(magic)
 {
 
 }
@@ -83,6 +84,7 @@ bool FileDB::open(bool read_only)
         const char* ro = "r";
         const char* options = (read_only) ? ro : rw;
         db = fopen(path.c_str(),options);
+
 
         if (db) {
             uint32_t header;
@@ -153,7 +155,6 @@ void FileDB::unlock()
 
 edupals::variant::Variant FileDB::read()
 {
-    fseek(db,0,SEEK_SET);
 
     stringstream ss;
     char buffer[128];
@@ -161,7 +162,6 @@ edupals::variant::Variant FileDB::read()
 
     L0:
     len = fread(buffer,1,128,db);
-
     if (len > 0) {
         ss.write((const char*)buffer,len);
         goto L0;
@@ -176,6 +176,9 @@ edupals::variant::Variant FileDB::read()
     if (format == DBFormat::Bson) {
          value = bson::load(ss);
     }
+
+    stringstream so;
+    so<<value;
 
     if (!value.is_struct()) {
         throw runtime_error("FileDB read: Expected struct");

@@ -1,3 +1,9 @@
+lliurex-gva-gate (25.0.7.0) noble; urgency=medium
+
+  * Added a more precise error message parsing json inputs
+
+ -- Enrique Medina Gremaldos <quique@necos.es>  Fri, 25 Jul 2025 13:48:32 +0200
+
 lliurex-gva-gate (25.0.6.0) noble; urgency=medium
 
   * Added an experimental apparmor rule to avoid cups or rsyslog crashing

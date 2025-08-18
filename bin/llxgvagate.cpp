@@ -67,8 +67,8 @@ void help()
 
     cout<<"commands:"<<endl;
     cout<<"create\t\tcreates database. (root)"<<endl;
-    cout<<"groups\t\ttlist group database"<<endl;
-    cout<<"users\t\ttlist user database"<<endl;
+    cout<<"groups\t\tlist group database"<<endl;
+    cout<<"users\t\tlist user database"<<endl;
     cout<<"auth\t\tperfoms an user authentication process"<<endl;
     cout<<"cache list | purge"<<endl;
     cout<<"\t\tlist\tlists cached users and expiration time"<<endl;

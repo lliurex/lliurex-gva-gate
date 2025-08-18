@@ -19,6 +19,11 @@ install(FILES "llx-gva-gate"
     DESTINATION "share/pam-configs"
 )
 
+install(FILES "llx-gva-gate.completion"
+    DESTINATION "share/bash-completion/completions/"
+    RENAME "llx-gva-gate"
+)
+
 install(FILES "LliurexGvaGateConfig.cmake"
     DESTINATION "lib/cmake/LliurexGvaGate"
 )

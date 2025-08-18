@@ -1,3 +1,9 @@
+lliurex-gva-gate (25.0.8.0) noble; urgency=medium
+
+  * Added autocompletion
+
+ -- Enrique Medina Gremaldos <quique@necos.es>  Mon, 18 Aug 2025 11:25:47 +0200
+
 lliurex-gva-gate (25.0.7.0) noble; urgency=medium
 
   * Added a more precise error message parsing json inputs

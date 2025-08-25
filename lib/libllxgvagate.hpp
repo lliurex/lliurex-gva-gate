@@ -120,6 +120,9 @@ namespace lliurex
 
         void create_db();
 
+        edupals::variant::Variant get_user_db();
+        edupals::variant::Variant get_shadow_db();
+
         void update_db(edupals::variant::Variant data);
         void update_shadow_db(std::string user,std::string password);
         int lookup_password(std::string user,std::string password);

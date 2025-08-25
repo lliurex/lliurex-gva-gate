@@ -394,6 +394,49 @@ int main(int argc,char* argv[])
 
     }
 
+    if (cmd == "dump") {
+        string cmd2;
+
+        if (result.args.size()>2) {
+            cmd2 = result.args[2];
+        }
+        else {
+            help();
+            return EX_USAGE;
+        }
+
+        if (cmd2 == "users") {
+            Gate gate(log);
+
+            if (!gate.exists_db(true)) {
+                return EX_OK;
+            }
+            Variant database = gate.get_user_db();
+            cout<<database;
+
+            return EX_OK;
+        }
+
+        if (cmd2 == "shadow") {
+            if (geteuid() != 0) {
+                cerr<<"Root user expected. Is setuid bit set?"<<endl;
+                return EX_NOPERM;
+            }
+
+            Gate gate(log);
+
+            if (!gate.exists_db(true)) {
+                return EX_OK;
+            }
+            Variant database = gate.get_shadow_db();
+            cout<<database;
+
+            return EX_OK;
+        }
+
+        return EX_USAGE;
+    }
+
     help();
     return EX_OK;
 }

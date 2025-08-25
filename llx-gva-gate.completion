@@ -9,12 +9,17 @@ _llx-gva-gate()
     #
     #  The basic options we'll complete.
     #
-    opts="create groups users auth cache"
+    opts="create groups users auth cache dump"
 
     case "${prev}" in
 
         cache)
             local flags="list purge"
+            COMPREPLY=( $(compgen -W "${flags}" -- ${cur}) )
+            return 0
+            ;;
+        dump)
+            local flags="users shadow"
             COMPREPLY=( $(compgen -W "${flags}" -- ${cur}) )
             return 0
             ;;

@@ -5,6 +5,7 @@
 #include "libllxgvagate.hpp"
 
 #include <variant.hpp>
+#include <json.hpp>
 #include <console.hpp>
 #include <cmd.hpp>
 
@@ -76,6 +77,22 @@ void help()
 
 }
 
+void assert_root()
+{
+    if (getuid() != 0) {
+        cerr<<"Root user expected"<<endl;
+        exit(EX_NOPERM);
+    }
+}
+
+void assert_setuid()
+{
+    if (geteuid() != 0) {
+        cerr<<"Root user expected. Is setuid bit set?"<<endl;
+        exit(EX_NOPERM);
+    }
+}
+
 int main(int argc,char* argv[])
 {
     timestamp = std::chrono::steady_clock::now();
@@ -130,10 +147,7 @@ int main(int argc,char* argv[])
 
     if (cmd == "create") {
 
-        if (getuid() != 0) {
-            cerr<<"Root user expected"<<endl;
-            return EX_NOPERM;
-        }
+        assert_root();
 
         Gate gate(log);
         if (!gate.exists_db(true)) {
@@ -152,6 +166,8 @@ int main(int argc,char* argv[])
 
             return EX_NOPERM;
         }
+
+        /* Should we assert root here? */
 
         if (result.args.size()<3) {
             return EX_USAGE;
@@ -220,10 +236,7 @@ int main(int argc,char* argv[])
 
     if (cmd == "auth" or cmd == "su") {
 
-        if (geteuid() != 0) {
-            cerr<<"Root user expected. Is setuid bit set?"<<endl;
-            return EX_NOPERM;
-        }
+        assert_setuid();
 
         Gate gate(log);
         if (!gate.exists_db(true)) {
@@ -347,6 +360,8 @@ int main(int argc,char* argv[])
 
         if (cmd2 == "list") {
 
+            assert_setuid();
+
             Gate gate(log);
             if (!gate.exists_db(true)) {
                 /* no need to panic, this may happen */
@@ -374,24 +389,24 @@ int main(int argc,char* argv[])
             return EX_OK;
 
         }
-        else {
-            if (cmd2 == "purge") {
-                Gate gate(log);
-                if (!gate.exists_db()) {
-                    /* no need to panic, this may happen */
-                    return EX_OK;
-                }
 
-                gate.purge_shadow_db();
+        if (cmd2 == "purge") {
 
+            assert_root();
+
+            Gate gate(log);
+            if (!gate.exists_db()) {
+                /* no need to panic, this may happen */
                 return EX_OK;
             }
-            else {
-                cerr<<"see help for details"<<endl;
-                return EX_USAGE;
-            }
+
+            gate.purge_shadow_db();
+
+            return EX_OK;
         }
 
+        help();
+        return EX_USAGE;
     }
 
     if (cmd == "dump") {
@@ -412,16 +427,13 @@ int main(int argc,char* argv[])
                 return EX_OK;
             }
             Variant database = gate.get_user_db();
-            cout<<database;
+            json::dump(database,cout);
 
             return EX_OK;
         }
 
         if (cmd2 == "shadow") {
-            if (geteuid() != 0) {
-                cerr<<"Root user expected. Is setuid bit set?"<<endl;
-                return EX_NOPERM;
-            }
+            assert_root();
 
             Gate gate(log);
 
@@ -429,11 +441,12 @@ int main(int argc,char* argv[])
                 return EX_OK;
             }
             Variant database = gate.get_shadow_db();
-            cout<<database;
+            json::dump(database,cout);
 
             return EX_OK;
         }
 
+        help();
         return EX_USAGE;
     }
 

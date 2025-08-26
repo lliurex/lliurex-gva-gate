@@ -109,6 +109,20 @@ void Gate::create_db()
 
 }
 
+Variant Gate::get_user_db()
+{
+    AutoLock lock(LockMode::Read,&userdb);
+
+    return userdb.read();
+}
+
+Variant Gate::get_shadow_db()
+{
+    AutoLock shadow_lock(LockMode::Read,&shadowdb);
+
+    return shadowdb.read();
+}
+
 void Gate::update_db(Variant data)
 {
 

@@ -51,7 +51,8 @@ namespace lliurex
     enum class AuthMethod {
             Local = 0,
             ADI = 1,
-            ID = 2
+            ID = 2,
+            CDC = 3
     };
 
     namespace exception

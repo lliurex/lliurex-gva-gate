@@ -441,7 +441,7 @@ string Gate::truncate_domain(string user)
     std::size_t found = user.find("@");
 
     if (found != std::string::npos) {
-        return user.substr(0,found);
+        return user.substr(0,found - 1);
     }
 
     return user;
@@ -476,6 +476,10 @@ int Gate::authenticate(string user,string password)
 
                 case AuthMethod::ID:
                     status = auth_exec("id",user,password);
+                break;
+
+                case AuthMethod::CDC:
+                    status = auth_exec("cdc",user,password);
                 break;
 
                 default:
@@ -759,6 +763,10 @@ void Gate::load_config()
 
                         if (method == "id") {
                             auth_methods.push_back(AuthMethod::ID);
+                        }
+
+                        if (method == "cdc") {
+                            auth_methods.push_back(AuthMethod:CDC);
                         }
                     }
                 }

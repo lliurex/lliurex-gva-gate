@@ -1,3 +1,10 @@
+lliurex-gva-gate (25.1.1.0) noble; urgency=medium
+
+  * Added CDC auth method
+  * Fixed domain split
+
+ -- Enrique Medina Gremaldos <quique@necos.es>  Mon, 22 Sep 2025 17:06:02 +0200
+
 lliurex-gva-gate (25.1.0.0) noble; urgency=medium
 
   * Added a database json dump

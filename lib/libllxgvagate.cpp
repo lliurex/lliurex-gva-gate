@@ -766,7 +766,7 @@ void Gate::load_config()
                         }
 
                         if (method == "cdc") {
-                            auth_methods.push_back(AuthMethod:CDC);
+                            auth_methods.push_back(AuthMethod::CDC);
                         }
                     }
                 }

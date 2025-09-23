@@ -441,7 +441,7 @@ string Gate::truncate_domain(string user)
     std::size_t found = user.find("@");
 
     if (found != std::string::npos) {
-        return user.substr(0,found - 1);
+        return user.substr(0,found);
     }
 
     return user;

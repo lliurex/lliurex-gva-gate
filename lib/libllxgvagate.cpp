@@ -250,14 +250,17 @@ int Gate::lookup_password(string user,string password)
     int status = Gate::UserNotFound;
     Variant database = shadowdb.read();
 
-    user = truncate_domain(user);
+    string username;
+    string domain;
+
+    truncate_domain(user,username,domain);
 
     //Validate here
 
     for (size_t n=0;n<database["passwords"].count();n++) {
         Variant shadow = database["passwords"][n];
 
-        if (shadow["name"].get_string() == user) {
+        if (shadow["name"].get_string() == username) {
             string stored_hash = shadow["key"].get_string();
             string stored_salt = extract_salt(stored_hash);
             string computed_hash = hash(password,stored_salt);
@@ -436,22 +439,38 @@ int Gate::auth_exec(string method, string user, string password)
     return status;
 }
 
-string Gate::truncate_domain(string user)
+bool Gate::truncate_domain(string user, string& username, string& domain)
 {
     std::size_t found = user.find("@");
 
     if (found != std::string::npos) {
-        return user.substr(0,found);
+        username = user.substr(0,found);
+        domain = user.substr(found + 1, user.size());
+
+        return true;
+    }
+    else {
+        username =user;
+        domain = "";
+
+        return false;
     }
 
-    return user;
 }
 
 int Gate::authenticate(string user,string password)
 {
     int status = Gate::Error;
 
-    user = truncate_domain(user);
+    string username;
+    string domain;
+
+    bool has_domain = truncate_domain(user,username,domain);
+    log(LOG_DEBUG,"username:"+username+"\n");
+
+    if (has_domain) {
+        log(LOG_DEBUG,"domain:"+domain+"\n");
+    }
 
     for (AuthMethod method : auth_methods) {
 
@@ -461,7 +480,7 @@ int Gate::authenticate(string user,string password)
                 case AuthMethod::Local: {
                     log(LOG_INFO,"Trying with local cache\n");
                     try {
-                        status = lookup_password(user,password);
+                        status = lookup_password(username,password);
                     }
                     catch(std::exception& e) {
                         log(LOG_ERR,string(e.what()) + "\n");

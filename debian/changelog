@@ -1,3 +1,9 @@
+lliurex-gva-gate (25.1.5.0) noble; urgency=medium
+
+  * Added an expiration property, default to 7 days
+
+ -- Enrique Medina Gremaldos <quique@necos.es>  Fri, 26 Sep 2025 10:07:43 +0200
+
 lliurex-gva-gate (25.1.4.0) noble; urgency=medium
 
   * full user and domain string is now pumped down to id backend

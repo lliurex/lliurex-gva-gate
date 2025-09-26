@@ -32,12 +32,15 @@ using namespace edupals::variant;
 using namespace std;
 namespace stdfs=std::experimental::filesystem;
 
+#define LLX_GVA_GATE_DEFAULT_EXPIRATION 7 * 1440
+#define LLX_GVA_GATE_MAX_EXPIRATION     30 * 1440
+
 Gate::Gate() : Gate(nullptr)
 {
 }
 
 Gate::Gate(function<void(int priority,string message)> cb) : log_cb(cb),
-    auth_methods({AuthMethod::Local})
+    auth_methods({AuthMethod::Local}), expiration(LLX_GVA_GATE_DEFAULT_EXPIRATION)
 {
     //log(LOG_DEBUG,"Gate with effective uid:"+std::to_string(geteuid()));
     //load_config();
@@ -199,7 +202,7 @@ void Gate::update_shadow_db(string name,string password)
 
         if (shadow["name"].get_string() == name) {
             shadow["key"] = hash(password,salt(name));
-            shadow["expire"] = 60 + (int32_t)std::time(nullptr);
+            shadow["expire"] = (60*expiration) + (int32_t)std::time(nullptr);
             found = true;
             break;
         }
@@ -209,7 +212,7 @@ void Gate::update_shadow_db(string name,string password)
         Variant shadow = Variant::create_struct();
         shadow["name"] = name;
         shadow["key"] = hash(password,salt(name));
-        shadow["expire"] = (10*60) + (int32_t)std::time(nullptr);
+        shadow["expire"] = (60*expiration) + (int32_t)std::time(nullptr);
         database["passwords"].append(shadow);
     }
 
@@ -420,6 +423,7 @@ int Gate::auth_exec(string method, string user, string password)
             log(LOG_DEBUG,"status:" + std::to_string(status) + "\n");
 
             if (status == Gate::Allowed) {
+                data["user"]["method"] = method;
                 update_db(data["user"]);
                 update_shadow_db(user,password);
             }
@@ -764,6 +768,28 @@ void Gate::load_config()
             Variant cfg = json::load(file);
 
             file.close();
+
+            if (cfg["expiration"].is_int32()) {
+                expiration = cfg.get_int32();
+
+                bool range_check = false;
+
+                if (expiration < 0) {
+                    expiration = 0;
+                    range_check = true;
+                }
+
+                if (expiration > LLX_GVA_GATE_MAX_EXPIRATION) {
+                    expiration = LLX_GVA_GATE_MAX_EXPIRATION;
+                    range_check = true;
+                }
+
+                if (range_check) {
+                    log(LOG_WARNING,"Expiration property is out of range [0,43200] minutes\n");
+                    log(LOG_WARNING,"Expiration has been set to:"+std::to_string(expiration)+" minutes\n");
+                }
+
+            }
 
             if (cfg["auth_methods"].is_array()) {
                 auth_methods.clear();

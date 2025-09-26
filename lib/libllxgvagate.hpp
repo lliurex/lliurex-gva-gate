@@ -155,8 +155,9 @@ namespace lliurex
         FileDB userdb;
         FileDB shadowdb;
 
-        std::string server;
+        /* config */
         AuthMode auth_mode;
+        int32_t expiration;
 
         // used for pwd pointer storage
         std::string pw_name;

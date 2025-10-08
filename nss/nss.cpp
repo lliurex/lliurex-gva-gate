@@ -184,10 +184,12 @@ int update_db()
 
     double delta = std::chrono::duration_cast<std::chrono::seconds>(now - lliurex::timestamp).count();
 
+    /*
     if (delta < 2.0) {
         //syslog(LOG_INFO,"cached group database\n");
         return 0;
     }
+    */
 
     lliurex::Gate gate(log);
 
@@ -234,10 +236,12 @@ int update_passwd_db()
 
     double delta = std::chrono::duration_cast<std::chrono::seconds>(now - lliurex::ptimestamp).count();
 
+    /*
     if (delta < 2.0) {
         //syslog(LOG_INFO,"cached user database\n");
         return 0;
     }
+    */
 
     lliurex::Gate gate(log);
 

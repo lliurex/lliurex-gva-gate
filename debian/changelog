@@ -1,3 +1,9 @@
+lliurex-gva-gate (25.1.6.0) noble; urgency=medium
+
+  * Removed simple internal NSS cache. We will need a better aproach
+
+ -- Enrique Medina Gremaldos  <quique@necos.es>  Wed, 08 Oct 2025 08:26:49 +0200
+
 lliurex-gva-gate (25.1.5.0) noble; urgency=medium
 
   * Added an expiration property, default to 7 days

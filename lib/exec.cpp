@@ -57,7 +57,6 @@ Variant Exec::run(string user, string password)
         response["status"] = status;
         if (status == Gate::Allowed) {
             Variant exec_response = json::load(data);
-            clog<<exec_response<<endl;
             response["user"] = exec_response;
         }
     }

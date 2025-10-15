@@ -15,6 +15,9 @@ namespace lliurex
         private:
 
         uint32_t current;
+        uint32_t* counter_ptr;
+
+        void open();
 
         public:
 

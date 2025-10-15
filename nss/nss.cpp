@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
 #include "libllxgvagate.hpp"
+#include "observer.hpp"
 
 #include <nss.h>
 #include <grp.h>
@@ -66,11 +67,9 @@ namespace lliurex
     int index = -1;
     int pindex = -1;
 
-    std::chrono::time_point<std::chrono::steady_clock> timestamp;
-    std::chrono::time_point<std::chrono::steady_clock> ptimestamp;
-
     bool debug = false;
 
+    lliurex::Observer observer;
 }
 
 static void log(int priority,string message)
@@ -180,27 +179,22 @@ static int push_passwd(lliurex::Passwd& source, struct passwd* result, char* buf
 
 int update_db()
 {
-    std::chrono::time_point<std::chrono::steady_clock> now = std::chrono::steady_clock::now();
-
-    double delta = std::chrono::duration_cast<std::chrono::seconds>(now - lliurex::timestamp).count();
-
-    /*
-    if (delta < 2.0) {
-        //syslog(LOG_INFO,"cached group database\n");
-        return 0;
-    }
-    */
 
     lliurex::Gate gate(log);
 
-    //syslog(LOG_INFO,"updating group database\n");
-
     if (!gate.exists_db()) {
-        //syslog(LOG_ERR,"Failed to open group database\n");
+        // this may happen
         return -1;
     }
 
     try {
+
+        if (!lliurex::observer.changed()) {
+            return 0;
+        }
+
+        syslog(LOG_INFO,"loading user database\n");
+
         Variant groups = gate.get_groups();
 
         lliurex::groups.clear();
@@ -218,41 +212,7 @@ int update_db()
 
             lliurex::groups.push_back(grp);
         }
-    }
-    catch (...) {
-        syslog(LOG_ERR,"Failed to open user database\n");
-        return -1;
-    }
 
-    lliurex::timestamp = now;
-
-    return 0;
-}
-
-int update_passwd_db()
-{
-    //syslog(LOG_INFO,"%s\n",__func__);
-    std::chrono::time_point<std::chrono::steady_clock> now = std::chrono::steady_clock::now();
-
-    double delta = std::chrono::duration_cast<std::chrono::seconds>(now - lliurex::ptimestamp).count();
-
-    /*
-    if (delta < 2.0) {
-        //syslog(LOG_INFO,"cached user database\n");
-        return 0;
-    }
-    */
-
-    lliurex::Gate gate(log);
-
-    //syslog(LOG_INFO,"updating user database\n");
-
-    if (!gate.exists_db()) {
-        //syslog(LOG_ERR,"Failed to open user database\n");
-        return -1;
-    }
-
-    try {
         Variant users = gate.get_users();
 
         lliurex::users.clear();
@@ -272,11 +232,9 @@ int update_passwd_db()
 
     }
     catch (...) {
-        syslog(LOG_ERR,"Failed to open password database\n");
+        syslog(LOG_ERR,"Failed to open user database\n");
         return -1;
     }
-
-    lliurex::ptimestamp = now;
 
     return 0;
 }
@@ -395,7 +353,7 @@ enum nss_status _nss_llxgvagate_setpwent(int stayopen)
 
     lliurex::pindex = -1;
 
-    int db_status = update_passwd_db();
+    int db_status = update_db();
     if (db_status == -1) {
         return NSS_STATUS_UNAVAIL;
     }
@@ -437,7 +395,7 @@ enum nss_status _nss_llxgvagate_getpwuid_r(uid_t uid, struct passwd* result, cha
 {
     std::lock_guard<std::mutex> lock(lliurex::pmtx);
 
-    int db_status = update_passwd_db();
+    int db_status = update_db();
     if (db_status == -1) {
         return NSS_STATUS_UNAVAIL;
     }
@@ -462,7 +420,7 @@ enum nss_status _nss_llxgvagate_getpwnam_r(const char* name, struct passwd* resu
 {
     std::lock_guard<std::mutex> lock(lliurex::pmtx);
 
-    int db_status = update_passwd_db();
+    int db_status = update_db();
     if (db_status == -1) {
         return NSS_STATUS_UNAVAIL;
     }

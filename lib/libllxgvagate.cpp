@@ -5,6 +5,7 @@
 #include "libllxgvagate.hpp"
 #include "filedb.hpp"
 #include "exec.hpp"
+#include "observer.hpp"
 
 #include <variant.hpp>
 #include <json.hpp>
@@ -88,6 +89,9 @@ void Gate::create_db()
             userdb.write(user_data);
             userdb.unlock();
             userdb.close();
+
+            // creates session shared counter
+            Observer::create();
         }
 
         // shadow db
@@ -156,6 +160,9 @@ void Gate::update_db(Variant data)
     user_data["users"] = tmp;
 
     userdb.write(user_data);
+
+    //updates shared counter
+    Observer::push();
 
 }
 

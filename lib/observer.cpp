@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <climits>
 #include <stdexcept>
 
 #define GVA_GATE_SHARED "/net.lliurex.gvagate.db"
@@ -16,7 +17,7 @@
 using namespace lliurex;
 using namespace std;
 
-Observer::Observer() : current(0), counter_ptr(nullptr)
+Observer::Observer() : current(UINT_MAX), counter_ptr(nullptr)
 {
     open();
 }
@@ -66,8 +67,30 @@ bool Observer::changed()
             return true;
         }
     }
+    else {
+
+        /* generate a first time change response */
+        if (current == UINT_MAX) {
+            current = 0;
+
+            return true;
+        }
+    }
 
     return false;
+}
+
+void Observer::create()
+{
+    int fd = shm_open(GVA_GATE_SHARED, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+    if(fd < 0) {
+        throw runtime_error("Failed to create or open a shared memory");
+    }
+
+    ftruncate(fd, 4);
+
+    close(fd);
 }
 
 void Observer::push()

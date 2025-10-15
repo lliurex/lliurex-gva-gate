@@ -26,6 +26,7 @@ namespace lliurex
 
         bool changed();
 
+        static void create();
         static void push();
     };
 }

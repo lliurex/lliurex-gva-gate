@@ -24,6 +24,11 @@ namespace lliurex
         Observer();
         virtual ~Observer();
 
+        uint32_t value() const
+        {
+            return current;
+        }
+
         bool changed();
 
         static void create();

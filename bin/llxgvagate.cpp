@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
 #include "libllxgvagate.hpp"
+#include "observer.hpp"
 
 #include <variant.hpp>
 #include <json.hpp>

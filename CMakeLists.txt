@@ -7,9 +7,9 @@ add_subdirectory(bin)
 add_subdirectory(nss)
 add_subdirectory(pam)
 
-install(FILES "llx-gva-gate.cfg"
-    DESTINATION "/etc/"
-)
+#install(FILES "llx-gva-gate.cfg"
+#    DESTINATION "/etc/"
+#)
 
 install(FILES "llx-gva-gate.apparmor"
     DESTINATION "/etc/apparmor.d/abstractions/base.d/"

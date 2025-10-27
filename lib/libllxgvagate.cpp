@@ -777,7 +777,8 @@ void Gate::load_config()
             file.close();
 
             if (cfg["expiration"].is_int32()) {
-                expiration = cfg.get_int32();
+                
+                expiration = cfg["expiration"].get_int32();
 
                 bool range_check = false;
 
@@ -830,6 +831,7 @@ void Gate::load_config()
         }
         catch (std::exception& e) {
             log(LOG_WARNING,"Failed to parse config file\n");
+            log(LOG_DEBUG,string(e.what()) + "\n");
         }
     }
 }

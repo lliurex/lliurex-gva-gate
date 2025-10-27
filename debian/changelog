@@ -1,3 +1,9 @@
+lliurex-gva-gate (25.2.1.0) noble; urgency=medium
+
+  * Fixed bug parsing config file
+
+ -- Enrique Medina Gremaldos <quique@necos.es>  Mon, 27 Oct 2025 08:08:22 +0100
+
 lliurex-gva-gate (25.2.0.0) noble; urgency=medium
 
   * Added a shared memory based database counter mechanism that serves as nss reload trigger

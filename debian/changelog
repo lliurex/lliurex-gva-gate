@@ -1,3 +1,9 @@
+lliurex-gva-gate (25.3.0.0) noble; urgency=medium
+
+  * Added a user database purge command
+
+ -- Enrique Medina Gremaldos <quique@necos.es>  Mon, 03 Nov 2025 12:16:42 +0100
+
 lliurex-gva-gate (25.2.1.0) noble; urgency=medium
 
   * Fixed bug parsing config file

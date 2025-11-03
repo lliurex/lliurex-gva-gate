@@ -75,6 +75,8 @@ void help()
     cout<<"cache list | purge"<<endl;
     cout<<"\t\tlist\tlists cached users and expiration time"<<endl;
     cout<<"\t\tpurge\tpurges cache database"<<endl;
+    cout<<"database purge"<<endl;
+    cout<<"\t\tpurge\tpurges user database"<<endl;
 
 }
 
@@ -444,6 +446,34 @@ int main(int argc,char* argv[])
             Variant database = gate.get_shadow_db();
             json::dump(database,cout);
 
+            return EX_OK;
+        }
+
+        help();
+        return EX_USAGE;
+    }
+
+    if (cmd == "database") {
+        string cmd2;
+
+        if (result.args.size() > 2) {
+            cmd2 = result.args[2];
+        }
+        else {
+            help();
+            return EX_USAGE;
+        }
+
+        if (cmd == "purge") {
+            assert_root();
+
+            Gate gate(log);
+            if (!gate.exists_db()) {
+                /* no need to panic, this may happen */
+                return EX_OK;
+            }
+
+            gate.purge_user_db();
             return EX_OK;
         }
 

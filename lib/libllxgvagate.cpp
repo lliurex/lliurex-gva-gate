@@ -227,6 +227,16 @@ void Gate::update_shadow_db(string name,string password)
 
 }
 
+void Gate::purge_user_db()
+{
+    AutoLock user_lock(LockMode::Write,&userdb);
+
+    Variant database = Variant::create_struct();
+    database["users"] = Variant::create_array(0);
+
+    userdb.write(database);
+}
+
 void Gate::purge_shadow_db()
 {
     AutoLock shadow_lock(LockMode::Write,&shadowdb);

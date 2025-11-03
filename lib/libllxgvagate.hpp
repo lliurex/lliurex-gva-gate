@@ -131,6 +131,8 @@ namespace lliurex
         edupals::variant::Variant get_groups();
         edupals::variant::Variant get_users();
         edupals::variant::Variant get_cache();
+
+        void purge_user_db();
         void purge_shadow_db();
 
         int authenticate(std::string user,std::string password);

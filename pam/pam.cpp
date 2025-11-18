@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
 #include "libllxgvagate.hpp"
+#include "observer.hpp"
 
 #include <security/pam_appl.h>
 #include <security/pam_modules.h>
@@ -166,6 +167,16 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
     catch(std::exception& e) {
         syslog(LOG_ERR,"%s\n",e.what());
         return PAM_AUTH_ERR;
+    }
+
+    /* initialize database shared memory counter but do not return error if fail */
+    if (geteuid() == 0) {
+        try {
+            Observer::create();
+        }
+        catch(std::exception& e) {
+            syslog(LOG_ERR,"%s\n",e.what());
+        }
     }
 
     return PAM_SUCCESS;

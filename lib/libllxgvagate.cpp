@@ -5,6 +5,7 @@
 #include "libllxgvagate.hpp"
 #include "filedb.hpp"
 #include "exec.hpp"
+#include "observer.hpp"
 
 #include <variant.hpp>
 #include <json.hpp>
@@ -32,12 +33,15 @@ using namespace edupals::variant;
 using namespace std;
 namespace stdfs=std::experimental::filesystem;
 
+#define LLX_GVA_GATE_DEFAULT_EXPIRATION 7 * 1440
+#define LLX_GVA_GATE_MAX_EXPIRATION     30 * 1440
+
 Gate::Gate() : Gate(nullptr)
 {
 }
 
 Gate::Gate(function<void(int priority,string message)> cb) : log_cb(cb),
-    auth_methods({AuthMethod::Local})
+    auth_methods({AuthMethod::Local}), expiration(LLX_GVA_GATE_DEFAULT_EXPIRATION)
 {
     //log(LOG_DEBUG,"Gate with effective uid:"+std::to_string(geteuid()));
     //load_config();
@@ -85,6 +89,9 @@ void Gate::create_db()
             userdb.write(user_data);
             userdb.unlock();
             userdb.close();
+
+            // creates session shared counter
+            Observer::create();
         }
 
         // shadow db
@@ -107,6 +114,20 @@ void Gate::create_db()
         log(LOG_ERR, e.what());
     }
 
+}
+
+Variant Gate::get_user_db()
+{
+    AutoLock lock(LockMode::Read,&userdb);
+
+    return userdb.read();
+}
+
+Variant Gate::get_shadow_db()
+{
+    AutoLock shadow_lock(LockMode::Read,&shadowdb);
+
+    return shadowdb.read();
 }
 
 void Gate::update_db(Variant data)
@@ -139,6 +160,9 @@ void Gate::update_db(Variant data)
     user_data["users"] = tmp;
 
     userdb.write(user_data);
+
+    //updates shared counter
+    Observer::push();
 
 }
 
@@ -185,7 +209,7 @@ void Gate::update_shadow_db(string name,string password)
 
         if (shadow["name"].get_string() == name) {
             shadow["key"] = hash(password,salt(name));
-            shadow["expire"] = 60 + (int32_t)std::time(nullptr);
+            shadow["expire"] = (60*expiration) + (int32_t)std::time(nullptr);
             found = true;
             break;
         }
@@ -195,12 +219,22 @@ void Gate::update_shadow_db(string name,string password)
         Variant shadow = Variant::create_struct();
         shadow["name"] = name;
         shadow["key"] = hash(password,salt(name));
-        shadow["expire"] = (10*60) + (int32_t)std::time(nullptr);
+        shadow["expire"] = (60*expiration) + (int32_t)std::time(nullptr);
         database["passwords"].append(shadow);
     }
 
     shadowdb.write(database);
 
+}
+
+void Gate::purge_user_db()
+{
+    AutoLock user_lock(LockMode::Write,&userdb);
+
+    Variant database = Variant::create_struct();
+    database["users"] = Variant::create_array(0);
+
+    userdb.write(database);
 }
 
 void Gate::purge_shadow_db()
@@ -236,14 +270,17 @@ int Gate::lookup_password(string user,string password)
     int status = Gate::UserNotFound;
     Variant database = shadowdb.read();
 
-    user = truncate_domain(user);
+    string username;
+    string domain;
+
+    truncate_domain(user,username,domain);
 
     //Validate here
 
     for (size_t n=0;n<database["passwords"].count();n++) {
         Variant shadow = database["passwords"][n];
 
-        if (shadow["name"].get_string() == user) {
+        if (shadow["name"].get_string() == username) {
             string stored_hash = shadow["key"].get_string();
             string stored_salt = extract_salt(stored_hash);
             string computed_hash = hash(password,stored_salt);
@@ -403,6 +440,7 @@ int Gate::auth_exec(string method, string user, string password)
             log(LOG_DEBUG,"status:" + std::to_string(status) + "\n");
 
             if (status == Gate::Allowed) {
+                data["user"]["method"] = method;
                 update_db(data["user"]);
                 update_shadow_db(user,password);
             }
@@ -422,22 +460,38 @@ int Gate::auth_exec(string method, string user, string password)
     return status;
 }
 
-string Gate::truncate_domain(string user)
+bool Gate::truncate_domain(string user, string& username, string& domain)
 {
     std::size_t found = user.find("@");
 
     if (found != std::string::npos) {
-        return user.substr(0,found);
+        username = user.substr(0,found);
+        domain = user.substr(found + 1, user.size());
+
+        return true;
+    }
+    else {
+        username =user;
+        domain = "";
+
+        return false;
     }
 
-    return user;
 }
 
 int Gate::authenticate(string user,string password)
 {
     int status = Gate::Error;
 
-    user = truncate_domain(user);
+    string username;
+    string domain;
+
+    bool has_domain = truncate_domain(user,username,domain);
+    log(LOG_DEBUG,"username:"+username+"\n");
+
+    if (has_domain) {
+        log(LOG_DEBUG,"domain:"+domain+"\n");
+    }
 
     for (AuthMethod method : auth_methods) {
 
@@ -447,7 +501,7 @@ int Gate::authenticate(string user,string password)
                 case AuthMethod::Local: {
                     log(LOG_INFO,"Trying with local cache\n");
                     try {
-                        status = lookup_password(user,password);
+                        status = lookup_password(username,password);
                     }
                     catch(std::exception& e) {
                         log(LOG_ERR,string(e.what()) + "\n");
@@ -462,6 +516,10 @@ int Gate::authenticate(string user,string password)
 
                 case AuthMethod::ID:
                     status = auth_exec("id",user,password);
+                break;
+
+                case AuthMethod::CDC:
+                    status = auth_exec("cdc",user,password);
                 break;
 
                 default:
@@ -728,6 +786,29 @@ void Gate::load_config()
 
             file.close();
 
+            if (cfg["expiration"].is_int32()) {
+                
+                expiration = cfg["expiration"].get_int32();
+
+                bool range_check = false;
+
+                if (expiration < 0) {
+                    expiration = 0;
+                    range_check = true;
+                }
+
+                if (expiration > LLX_GVA_GATE_MAX_EXPIRATION) {
+                    expiration = LLX_GVA_GATE_MAX_EXPIRATION;
+                    range_check = true;
+                }
+
+                if (range_check) {
+                    log(LOG_WARNING,"Expiration property is out of range [0,43200] minutes\n");
+                    log(LOG_WARNING,"Expiration has been set to:"+std::to_string(expiration)+" minutes\n");
+                }
+
+            }
+
             if (cfg["auth_methods"].is_array()) {
                 auth_methods.clear();
 
@@ -746,6 +827,10 @@ void Gate::load_config()
                         if (method == "id") {
                             auth_methods.push_back(AuthMethod::ID);
                         }
+
+                        if (method == "cdc") {
+                            auth_methods.push_back(AuthMethod::CDC);
+                        }
                     }
                 }
 
@@ -756,6 +841,7 @@ void Gate::load_config()
         }
         catch (std::exception& e) {
             log(LOG_WARNING,"Failed to parse config file\n");
+            log(LOG_DEBUG,string(e.what()) + "\n");
         }
     }
 }

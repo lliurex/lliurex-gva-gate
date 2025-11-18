@@ -51,7 +51,8 @@ namespace lliurex
     enum class AuthMethod {
             Local = 0,
             ADI = 1,
-            ID = 2
+            ID = 2,
+            CDC = 3
     };
 
     namespace exception
@@ -120,6 +121,9 @@ namespace lliurex
 
         void create_db();
 
+        edupals::variant::Variant get_user_db();
+        edupals::variant::Variant get_shadow_db();
+
         void update_db(edupals::variant::Variant data);
         void update_shadow_db(std::string user,std::string password);
         int lookup_password(std::string user,std::string password);
@@ -127,6 +131,8 @@ namespace lliurex
         edupals::variant::Variant get_groups();
         edupals::variant::Variant get_users();
         edupals::variant::Variant get_cache();
+
+        void purge_user_db();
         void purge_shadow_db();
 
         int authenticate(std::string user,std::string password);
@@ -144,15 +150,16 @@ namespace lliurex
 
         int auth_exec(std::string method, std::string user, std::string password);
         void log(int priority, std::string message);
-        std::string truncate_domain(std::string user);
+        bool truncate_domain(std::string user, std::string& username, std::string& domain);
 
         std::function<void(int priority,std::string message)> log_cb;
 
         FileDB userdb;
         FileDB shadowdb;
 
-        std::string server;
+        /* config */
         AuthMode auth_mode;
+        int32_t expiration;
 
         // used for pwd pointer storage
         std::string pw_name;

@@ -1,3 +1,11 @@
+lliurex-gva-gate (25.3.0.0) jammy; urgency=medium
+
+  * Added a command to purge user database
+  * Several bugs fixed
+  * Added a shared memory counter that allows nss plugin to know when the database needs to be reloaded
+
+ -- Enrique Medina Gremaldos <quique@necos.es>  Tue, 18 Nov 2025 09:25:54 +0100
+
 lliurex-gva-gate (25.0.6.1) jammy; urgency=medium
 
   * Fixed binary permissions

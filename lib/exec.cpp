@@ -52,7 +52,7 @@ Variant Exec::run(string user, string password)
         }
         close(out_fd);
         status = child.wait();
-        clog<<"exec status:"<<status<<endl;
+        //clog<<"exec status:"<<status<<endl;
 
         response["status"] = status;
         if (status == Gate::Allowed) {

@@ -1,3 +1,9 @@
+lliurex-gva-gate (25.3.1.0) jammy; urgency=medium
+
+  * Removed bogus debug print 
+
+ -- Enrique Medina Gremaldos <quique@necos.es>  Tue, 25 Nov 2025 14:51:30 +0100
+
 lliurex-gva-gate (25.3.0.0) jammy; urgency=medium
 
   * Added a command to purge user database

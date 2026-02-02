@@ -112,6 +112,8 @@ namespace lliurex
 
         void update_db(edupals::variant::Variant data);
         void update_shadow_db(std::string user,std::string password);
+
+        int lookup_user(std::string user, edupals::variant::Variant& out);
         int lookup_password(std::string user,std::string password);
 
         edupals::variant::Variant get_groups();
@@ -121,7 +123,7 @@ namespace lliurex
         void purge_user_db();
         void purge_shadow_db();
 
-        int authenticate(std::string user,std::string password);
+        int authenticate(std::string user,std::string password, edupals::variant::Variant& out);
 
         bool validate(edupals::variant::Variant data,Validator validator,std::string& what);
 
@@ -134,7 +136,7 @@ namespace lliurex
 
         protected:
 
-        int auth_exec(std::string method, std::string user, std::string password);
+        int auth_exec(std::string method, std::string user, std::string password, edupals::variant::Variant& out);
         void log(int priority, std::string message);
         bool truncate_domain(std::string user, std::string& username, std::string& domain);
 

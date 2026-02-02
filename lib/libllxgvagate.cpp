@@ -265,6 +265,11 @@ static string extract_salt(string key)
     return "";
 }
 
+int Gate::lookup_user(string user, Variant& out)
+{
+    return int status = Gate::UserNotFound;
+}
+
 int Gate::lookup_password(string user,string password)
 {
     AutoLock shadow_lock(LockMode::Read,&shadowdb);
@@ -426,7 +431,7 @@ void Gate::set_logger(function<void(int priority,string message)> cb)
     this->log_cb = cb;
 }
 
-int Gate::auth_exec(string method, string user, string password)
+int Gate::auth_exec(string method, string user, string password, Variant& out)
 {
     int status = Gate::Error;
 
@@ -444,6 +449,8 @@ int Gate::auth_exec(string method, string user, string password)
                 data["user"]["method"] = method;
                 update_db(data["user"]);
                 update_shadow_db(user,password);
+
+                out = data;
             }
 
         }
@@ -480,7 +487,7 @@ bool Gate::truncate_domain(string user, string& username, string& domain)
 
 }
 
-int Gate::authenticate(string user,string password)
+int Gate::authenticate(string user,string password, Variant& out)
 {
     int status = Gate::Error;
 
@@ -509,7 +516,7 @@ int Gate::authenticate(string user,string password)
                 }
             }
             else {
-                status = auth_exec(method, user, password);
+                status = auth_exec(method, user, password, out);
             }
 
         }

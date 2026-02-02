@@ -48,13 +48,6 @@ namespace lliurex
         ExpiredPassword
     };
 
-    enum class AuthMethod {
-            Local = 0,
-            ADI = 1,
-            ID = 2,
-            CDC = 3
-    };
-
     namespace exception
     {
         class GateError: public std::exception
@@ -104,13 +97,6 @@ namespace lliurex
 
         };
 
-        enum AuthMode {
-            Default = 0,
-            Remote = 1,
-            Local = 2,
-            All = 4
-        };
-
         Gate();
         Gate(std::function<void(int priority,std::string message)> cb);
 
@@ -158,7 +144,6 @@ namespace lliurex
         FileDB shadowdb;
 
         /* config */
-        AuthMode auth_mode;
         int32_t expiration;
 
         // used for pwd pointer storage
@@ -167,7 +152,7 @@ namespace lliurex
         std::string pw_shell;
         std::string pw_gecos;
 
-        std::vector<AuthMethod> auth_methods;
+        std::vector<std::string> auth_methods;
     };
 }
 

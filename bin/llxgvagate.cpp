@@ -276,7 +276,8 @@ int main(int argc,char* argv[])
 
         clog<<endl;
 
-        int status = gate.authenticate(user,password);
+        Variant user;
+        int status = gate.authenticate(user,password, user);
 
         string message;
         switch (status) {

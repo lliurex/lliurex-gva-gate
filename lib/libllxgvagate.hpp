@@ -136,6 +136,8 @@ namespace lliurex
 
         protected:
 
+        edupals::variant::Variant create_empty_user();
+
         int auth_exec(std::string method, std::string user, std::string password, edupals::variant::Variant& out);
         void log(int priority, std::string message);
         bool truncate_domain(std::string user, std::string& username, std::string& domain);

@@ -267,7 +267,26 @@ static string extract_salt(string key)
 
 int Gate::lookup_user(string user, Variant& out)
 {
-    return int status = Gate::UserNotFound;
+    int status = Gate::UserNotFound;
+
+    AutoLock lock(LockMode::Read,&userdb);
+    Variant database = userdb.read();
+
+    string what;
+
+    if (!validate(database,Validator::UserDatabase, what)) {
+        log(LOG_ERR,"Bad user database\n");
+        throw exception::GateError("Bad user database\n:" + what + "\n",0);
+    }
+
+    for (size_t n = 0;n < database["users"].count();n++) {
+        if (database["users"][n]["name"].get_string() == user) {
+            out = database["users"][n];
+            break;
+        }
+    }
+
+    return status;
 }
 
 int Gate::lookup_password(string user,string password)
@@ -431,6 +450,20 @@ void Gate::set_logger(function<void(int priority,string message)> cb)
     this->log_cb = cb;
 }
 
+Variant Gate::create_empty_user()
+{
+    Variant user = Variant::create_struct();
+
+    user["name"] = "";
+    user["uid"] = -1;
+    user["gid"] = -1;
+    user["dir"] = "";
+    user["shell"] = "";
+    user["gecos"] = "";
+
+    return user;
+}
+
 int Gate::auth_exec(string method, string user, string password, Variant& out)
 {
     int status = Gate::Error;
@@ -490,6 +523,7 @@ bool Gate::truncate_domain(string user, string& username, string& domain)
 int Gate::authenticate(string user,string password, Variant& out)
 {
     int status = Gate::Error;
+    out = create_empty_user();
 
     string username;
     string domain;
@@ -509,6 +543,11 @@ int Gate::authenticate(string user,string password, Variant& out)
                 log(LOG_INFO,"Trying with local cache\n");
                 try {
                     status = lookup_password(username,password);
+
+                    if (status != Gate::NotFound) {
+                        // extra check?
+                        lookup_user(username, out);
+                    }
                 }
                 catch(std::exception& e) {
                     log(LOG_ERR,string(e.what()) + "\n");

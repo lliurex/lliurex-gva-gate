@@ -62,6 +62,8 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
     const char* user;
     const char* tty;
     const char* password;
+    edupals::variant::Variant user_passwd;
+    bool external = false;
 
     status = pam_get_item(pamh, PAM_SERVICE, (const void**)(const void*)&service);
 
@@ -105,12 +107,14 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
             */
             // loads config: server address, auth_mode
             gate.load_config();
-            edupals::variant::Variant user_data;
-            chkpwd = gate.authenticate(user,password, user_data);
+
+            chkpwd = gate.authenticate(user,password, user_passwd);
             pam_syslog(pamh,LOG_INFO,"User %s authentication returned %d\n",user,chkpwd);
 
         }
         else {
+
+            external = true;
 
             pid_t child;
 
@@ -148,6 +152,16 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
             case Gate::Allowed:
             case Gate::ExpiredPassword:
             //case Gate::UserNotAllowed:
+
+                if (!external) {
+                    if (user_passwd["name"].get_string() != user) {
+                        const char* muser = user_passwd["name"].get_string().c_str();
+
+                        pam_syslog(pamh, LOG_INFO, "Remapping user from %s to %s\n", user, muser);
+                        pam_set_item(pamh, PAM_USER, (const void*)muser);
+                    }
+                }
+
                 return PAM_SUCCESS;
             break;
 

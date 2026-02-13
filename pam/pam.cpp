@@ -105,8 +105,8 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
             */
             // loads config: server address, auth_mode
             gate.load_config();
-
-            chkpwd = gate.authenticate(user,password);
+            edupals::variant::Variant user_data;
+            chkpwd = gate.authenticate(user,password, user_data);
             pam_syslog(pamh,LOG_INFO,"User %s authentication returned %d\n",user,chkpwd);
 
         }

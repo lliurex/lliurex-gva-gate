@@ -544,7 +544,7 @@ int Gate::authenticate(string user,string password, Variant& out)
                 try {
                     status = lookup_password(username,password);
 
-                    if (status != Gate::NotFound) {
+                    if (status != Gate::UserNotFound) {
                         // extra check?
                         lookup_user(username, out);
                     }

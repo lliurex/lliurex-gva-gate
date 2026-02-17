@@ -280,7 +280,7 @@ int Gate::lookup_user(string user, Variant& out)
     }
 
     for (size_t n = 0;n < database["users"].count();n++) {
-        if (database["users"][n]["name"].get_string() == user) {
+        if (database["users"][n]["login"].get_string() == user) {
             out = database["users"][n];
             break;
         }
@@ -454,7 +454,7 @@ Variant Gate::create_empty_user()
 {
     Variant user = Variant::create_struct();
 
-    user["name"] = "";
+    user["login"] = "";
     user["uid"] = -1;
     user["gid"] = -1;
     user["dir"] = "";

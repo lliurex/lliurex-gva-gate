@@ -154,8 +154,8 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
             //case Gate::UserNotAllowed:
 
                 if (!external) {
-                    if (user_passwd["name"].get_string() != user) {
-                        const char* muser = user_passwd["name"].get_string().c_str();
+                    if (user_passwd["user"]["login"].get_string() != user) {
+                        const char* muser = user_passwd["user"]["login"].get_string().c_str();
 
                         pam_syslog(pamh, LOG_INFO, "Remapping user from %s to %s\n", user, muser);
                         pam_set_item(pamh, PAM_USER, (const void*)muser);

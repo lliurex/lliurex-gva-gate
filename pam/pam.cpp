@@ -122,7 +122,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
 
             if (child == 0) {
                 // child
-                execl("/bin/llx-gva-gate","chkpwd",user,password,(char*)0);
+                execl("/bin/llx-gva-gate","/bin/llx-gva-gate","chkpwd",user,password,(char*)0);
 
                 pam_syslog(pamh,LOG_ERR,"Failed to spawn llx-gva-gate process\n");
                 return PAM_AUTH_ERR;

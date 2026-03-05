@@ -276,7 +276,8 @@ int main(int argc,char* argv[])
 
         clog<<endl;
 
-        int status = gate.authenticate(user,password);
+        Variant user_data;
+        int status = gate.authenticate(user,password, user_data);
 
         string message;
         switch (status) {
@@ -311,6 +312,9 @@ int main(int argc,char* argv[])
         }
 
         if (status == Gate::Allowed and cmd == "su") {
+
+            user = user_data["user"]["login"].get_string();
+
             struct passwd* user_info;
 
             user_info = getpwnam(user.c_str());

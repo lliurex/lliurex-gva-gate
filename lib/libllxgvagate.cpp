@@ -35,13 +35,14 @@ namespace stdfs=std::experimental::filesystem;
 
 #define LLX_GVA_GATE_DEFAULT_EXPIRATION 7 * 1440
 #define LLX_GVA_GATE_MAX_EXPIRATION     30 * 1440
+#define LLX_GVA_GATE_METHOD_LOCAL   "local"
 
 Gate::Gate() : Gate(nullptr)
 {
 }
 
 Gate::Gate(function<void(int priority,string message)> cb) : log_cb(cb),
-    auth_methods({AuthMethod::Local}), expiration(LLX_GVA_GATE_DEFAULT_EXPIRATION)
+    auth_methods({LLX_GVA_GATE_METHOD_LOCAL}), expiration(LLX_GVA_GATE_DEFAULT_EXPIRATION)
 {
     //log(LOG_DEBUG,"Gate with effective uid:"+std::to_string(geteuid()));
     //load_config();
@@ -264,6 +265,30 @@ static string extract_salt(string key)
     return "";
 }
 
+int Gate::lookup_user(string user, Variant& out)
+{
+    int status = Gate::UserNotFound;
+
+    AutoLock lock(LockMode::Read,&userdb);
+    Variant database = userdb.read();
+
+    string what;
+
+    if (!validate(database,Validator::UserDatabase, what)) {
+        log(LOG_ERR,"Bad user database\n");
+        throw exception::GateError("Bad user database\n:" + what + "\n",0);
+    }
+
+    for (size_t n = 0;n < database["users"].count();n++) {
+        if (database["users"][n]["login"].get_string() == user) {
+            out = database["users"][n];
+            break;
+        }
+    }
+
+    return status;
+}
+
 int Gate::lookup_password(string user,string password)
 {
     AutoLock shadow_lock(LockMode::Read,&shadowdb);
@@ -425,7 +450,21 @@ void Gate::set_logger(function<void(int priority,string message)> cb)
     this->log_cb = cb;
 }
 
-int Gate::auth_exec(string method, string user, string password)
+Variant Gate::create_empty_user()
+{
+    Variant user = Variant::create_struct();
+
+    user["login"] = "";
+    user["uid"] = -1;
+    user["gid"] = -1;
+    user["dir"] = "";
+    user["shell"] = "";
+    user["gecos"] = "";
+
+    return user;
+}
+
+int Gate::auth_exec(string method, string user, string password, Variant& out)
 {
     int status = Gate::Error;
 
@@ -443,6 +482,8 @@ int Gate::auth_exec(string method, string user, string password)
                 data["user"]["method"] = method;
                 update_db(data["user"]);
                 update_shadow_db(user,password);
+
+                out = data;
             }
 
         }
@@ -479,9 +520,10 @@ bool Gate::truncate_domain(string user, string& username, string& domain)
 
 }
 
-int Gate::authenticate(string user,string password)
+int Gate::authenticate(string user,string password, Variant& out)
 {
     int status = Gate::Error;
+    out = create_empty_user();
 
     string username;
     string domain;
@@ -493,40 +535,30 @@ int Gate::authenticate(string user,string password)
         log(LOG_DEBUG,"domain:"+domain+"\n");
     }
 
-    for (AuthMethod method : auth_methods) {
+    for (string method : auth_methods) {
 
         if (status == Gate::Error or status == Gate::UserNotFound) {
-            switch (method) {
 
-                case AuthMethod::Local: {
-                    log(LOG_INFO,"Trying with local cache\n");
-                    try {
-                        status = lookup_password(username,password);
-                    }
-                    catch(std::exception& e) {
-                        log(LOG_ERR,string(e.what()) + "\n");
-                        status = Gate::Error;
+            if (method == LLX_GVA_GATE_METHOD_LOCAL) {
+                log(LOG_INFO,"Trying with local cache\n");
+                try {
+                    status = lookup_password(username,password);
+
+                    if (status != Gate::UserNotFound) {
+                        // extra check?
+                        lookup_user(username, out);
                     }
                 }
-                break;
-
-                case AuthMethod::ADI:
-                    status = auth_exec("adi",user,password);
-                break;
-
-                case AuthMethod::ID:
-                    status = auth_exec("id",user,password);
-                break;
-
-                case AuthMethod::CDC:
-                    status = auth_exec("cdc",user,password);
-                break;
-
-                default:
-                    log(LOG_ERR,"Unknown authentication method:" + std::to_string((int)method) + "\n");
+                catch(std::exception& e) {
+                    log(LOG_ERR,string(e.what()) + "\n");
+                    status = Gate::Error;
+                }
             }
-        }
+            else {
+                status = auth_exec(method, user, password, out);
+            }
 
+        }
     }
 
     return status;
@@ -815,27 +847,12 @@ void Gate::load_config()
                 for (Variant m : cfg["auth_methods"].get_array()) {
                     if (m.is_string()) {
                         string method = m.get_string();
-
-                        if (method == "local") {
-                            auth_methods.push_back(AuthMethod::Local);
-                        }
-
-                        if (method == "adi") {
-                            auth_methods.push_back(AuthMethod::ADI);
-                        }
-
-                        if (method == "id") {
-                            auth_methods.push_back(AuthMethod::ID);
-                        }
-
-                        if (method == "cdc") {
-                            auth_methods.push_back(AuthMethod::CDC);
-                        }
+                        auth_methods.push_back(method);
                     }
                 }
 
                 if (auth_methods.size() == 0) {
-                    auth_methods.push_back(AuthMethod::Local);
+                    auth_methods.push_back(LLX_GVA_GATE_METHOD_LOCAL);
                 }
             }
         }

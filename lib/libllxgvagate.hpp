@@ -48,13 +48,6 @@ namespace lliurex
         ExpiredPassword
     };
 
-    enum class AuthMethod {
-            Local = 0,
-            ADI = 1,
-            ID = 2,
-            CDC = 3
-    };
-
     namespace exception
     {
         class GateError: public std::exception
@@ -104,13 +97,6 @@ namespace lliurex
 
         };
 
-        enum AuthMode {
-            Default = 0,
-            Remote = 1,
-            Local = 2,
-            All = 4
-        };
-
         Gate();
         Gate(std::function<void(int priority,std::string message)> cb);
 
@@ -126,6 +112,8 @@ namespace lliurex
 
         void update_db(edupals::variant::Variant data);
         void update_shadow_db(std::string user,std::string password);
+
+        int lookup_user(std::string user, edupals::variant::Variant& out);
         int lookup_password(std::string user,std::string password);
 
         edupals::variant::Variant get_groups();
@@ -135,7 +123,7 @@ namespace lliurex
         void purge_user_db();
         void purge_shadow_db();
 
-        int authenticate(std::string user,std::string password);
+        int authenticate(std::string user,std::string password, edupals::variant::Variant& out);
 
         bool validate(edupals::variant::Variant data,Validator validator,std::string& what);
 
@@ -148,7 +136,9 @@ namespace lliurex
 
         protected:
 
-        int auth_exec(std::string method, std::string user, std::string password);
+        edupals::variant::Variant create_empty_user();
+
+        int auth_exec(std::string method, std::string user, std::string password, edupals::variant::Variant& out);
         void log(int priority, std::string message);
         bool truncate_domain(std::string user, std::string& username, std::string& domain);
 
@@ -158,7 +148,6 @@ namespace lliurex
         FileDB shadowdb;
 
         /* config */
-        AuthMode auth_mode;
         int32_t expiration;
 
         // used for pwd pointer storage
@@ -167,7 +156,7 @@ namespace lliurex
         std::string pw_shell;
         std::string pw_gecos;
 
-        std::vector<AuthMethod> auth_methods;
+        std::vector<std::string> auth_methods;
     };
 }
 

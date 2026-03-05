@@ -1,3 +1,10 @@
+lliurex-gva-gate (25.4.0.0) noble; urgency=medium
+
+  * fixed bug with lockscreen allowing everyone to pass
+  * Capable of username remapping
+
+ -- Enrique Medina Gremaldos <quique@necos.es>  Thu, 05 Mar 2026 13:10:46 +0100
+
 lliurex-gva-gate (25.3.1.1) noble; urgency=medium
 
   * Add comma to apparmor rule

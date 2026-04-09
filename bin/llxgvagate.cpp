@@ -468,7 +468,7 @@ int main(int argc,char* argv[])
             return EX_USAGE;
         }
 
-        if (cmd == "purge") {
+        if (cmd2 == "purge") {
             assert_root();
 
             Gate gate(log);

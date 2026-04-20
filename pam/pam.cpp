@@ -202,6 +202,7 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
     int status;
     const char* user;
     const void* data;
+    const char* service;
 
     status = pam_get_user(pamh, &user, NULL);
 
@@ -233,7 +234,14 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
         */
     }
 
-    pam_info(pamh,"Welcome to GVA\n");
+    status = pam_get_item(pamh, PAM_SERVICE, (const void**)(const void*)&service);
+
+    if (status == PAM_SUCCESS) {
+        if (service != "sudo") {
+            pam_info(pamh,"Welcome to GVA\n");
+        }
+    }
+
     pam_syslog(pamh,LOG_INFO,"Granting access to %s\n",user);
     return PAM_SUCCESS;
 }

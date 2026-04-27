@@ -75,8 +75,10 @@ void help()
     cout<<"cache list | purge"<<endl;
     cout<<"\t\tlist\tlists cached users and expiration time"<<endl;
     cout<<"\t\tpurge\tpurges cache database"<<endl;
-    cout<<"database purge"<<endl;
+    cout<<"database purge | purge-all"<<endl;
     cout<<"\t\tpurge\tpurges user database"<<endl;
+    cout<<"\t\tpurge-all\tpurges both user and cache database"<<endl;
+    cout<<"database su USER\t\tchanges session to given user"<<endl;
 
 }
 
@@ -468,7 +470,7 @@ int main(int argc,char* argv[])
             return EX_USAGE;
         }
 
-        if (cmd2 == "purge") {
+        if (cmd2 == "purge" or cmd2 == "purge-all") {
             assert_root();
 
             Gate gate(log);
@@ -478,6 +480,11 @@ int main(int argc,char* argv[])
             }
 
             gate.purge_user_db();
+
+            if (cmd2 == "purge-all") {
+                gate.purge_shadow_db();
+            }
+
             return EX_OK;
         }
 

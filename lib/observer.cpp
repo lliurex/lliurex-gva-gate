@@ -33,25 +33,20 @@ void Observer::open()
 {
     int fd = shm_open(GVA_GATE_SHARED, O_RDONLY, S_IRUSR);
 
-    if(fd < 0) {
+    if (fd > 0) {
+        uint32_t *ptr = (uint32_t *) mmap(nullptr, 4, PROT_READ, MAP_SHARED, fd, 0);
 
-        if (errno == ENOENT) {
-            // this may happen
+        if (!ptr) {
+            close(fd);
+            // failed to map shared memory
             return;
         }
-        throw runtime_error("Failed to open shared memory object");
-    }
 
-    uint32_t *ptr = (uint32_t *) mmap(nullptr, 4, PROT_READ, MAP_SHARED, fd, 0);
+        counter_ptr = ptr;
 
-    if (!ptr) {
         close(fd);
-        throw runtime_error("Failed to map shared memory");
     }
 
-    counter_ptr = ptr;
-
-    close(fd);
 }
 
 bool Observer::changed()

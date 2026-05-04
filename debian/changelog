@@ -1,3 +1,12 @@
+lliurex-gva-gate (25.4.3.0) noble; urgency=medium
+
+  * Fixed remapping not working
+  * Make pam plugin a bit stronger using stack based C++ strings
+  * Silent user database log at nss
+  * This may fix nss plugin crashing at unix_chkpwd 
+
+ -- Enrique Medina Gremaldos <quique@necos.es>  Mon, 04 May 2026 14:18:58 +0200
+
 lliurex-gva-gate (25.4.2.0) noble; urgency=medium
 
   * Do not show welcome message if service belongs to sudo

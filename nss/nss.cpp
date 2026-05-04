@@ -193,7 +193,7 @@ int update_db()
             return 0;
         }
 
-        syslog(LOG_INFO,"loading user database\n");
+        syslog(LOG_DEBUG,"loading user database\n");
 
         Variant groups = gate.get_groups();
 

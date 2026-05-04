@@ -58,43 +58,57 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
 
     int status;
     int chkpwd = -1;
-    const char* service;
-    const char* user;
-    const char* tty;
-    const char* password;
+    string service;
+    string user;
+    string tty;
+    string password;
+    const char* tmpstr;
+
     edupals::variant::Variant user_passwd;
     bool external = false;
 
-    status = pam_get_item(pamh, PAM_SERVICE, (const void**)(const void*)&service);
+    status = pam_get_item(pamh, PAM_SERVICE, (const void**)(const void*)&tmpstr);
 
     if (status != PAM_SUCCESS) {
         pam_syslog(pamh,LOG_ERR,"cannot retrieve service\n");
         return PAM_AUTH_ERR;
     }
+    else {
+        service = tmpstr;
+    }
 
-    status = pam_get_user(pamh, &user, NULL);
+    status = pam_get_user(pamh, &tmpstr, NULL);
 
     if (status != PAM_SUCCESS) {
         pam_syslog(pamh,LOG_ERR,"cannot retrieve user\n");
         return PAM_AUTH_ERR;
     }
+    else {
+        user = tmpstr;
+    }
 
-    status = pam_get_item(pamh, PAM_TTY,(const void **)(const void *)&tty);
+    status = pam_get_item(pamh, PAM_TTY,(const void **)(const void *)&tmpstr);
 
     if (status != PAM_SUCCESS) {
         pam_syslog(pamh,LOG_ERR,"cannot retrieve tty\n");
         return PAM_AUTH_ERR;
     }
+    else {
+        tty = tmpstr;
+    }
 
-    status = pam_get_authtok(pamh, PAM_AUTHTOK, &password , NULL);
+    status = pam_get_authtok(pamh, PAM_AUTHTOK, &tmpstr , NULL);
 
     if (status != PAM_SUCCESS) {
         pam_syslog(pamh,LOG_ERR,"cannot retrieve password\n");
         return PAM_AUTH_ERR;
     }
+    else {
+        password = tmpstr;
+    }
 
     try {
-        pam_syslog(pamh,LOG_INFO,"user:%s  tty:%s  service:%s\n",user,tty,service);
+        pam_syslog(pamh,LOG_INFO,"user:%s  tty:%s  service:%s\n",user.c_str(),tty.c_str(),service.c_str());
 
         if (geteuid() == 0) {
             Gate gate(log);
@@ -109,7 +123,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
             gate.load_config();
 
             chkpwd = gate.authenticate(user,password, user_passwd);
-            pam_syslog(pamh,LOG_INFO,"User %s authentication returned %d\n",user,chkpwd);
+            pam_syslog(pamh,LOG_INFO,"User %s authentication returned %d\n",user.c_str(),chkpwd);
 
         }
         else {
@@ -122,7 +136,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
 
             if (child == 0) {
                 // child
-                execl("/bin/llx-gva-gate","/bin/llx-gva-gate","chkpwd",user,password,(char*)0);
+                execl("/bin/llx-gva-gate","/bin/llx-gva-gate","chkpwd",user.c_str(),password.c_str(),(char*)0);
 
                 pam_syslog(pamh,LOG_ERR,"Failed to spawn llx-gva-gate process\n");
                 return PAM_AUTH_ERR;
@@ -155,10 +169,10 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
 
                 if (!external) {
                     if (user_passwd["user"]["login"].get_string() != user) {
-                        const char* muser = user_passwd["user"]["login"].get_string().c_str();
+                        string muser = user_passwd["user"]["login"].get_string();
 
-                        pam_syslog(pamh, LOG_INFO, "Remapping user from %s to %s\n", user, muser);
-                        pam_set_item(pamh, PAM_USER, (const void*)muser);
+                        pam_syslog(pamh, LOG_INFO, "Remapping user from %s to %s\n", user.c_str(), muser.c_str());
+                        pam_set_item(pamh, PAM_USER, (const void*)muser.c_str());
                     }
                 }
 
@@ -200,15 +214,19 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
 {
     pam_syslog(pamh,LOG_DEBUG,"pam_sm_acct_mgmt\n");
     int status;
-    const char* user;
+    string user;
     const void* data;
-    const char* service;
+    string service;
+    const char* tmpstr;
 
-    status = pam_get_user(pamh, &user, NULL);
+    status = pam_get_user(pamh, &tmpstr, NULL);
 
     if (status != PAM_SUCCESS) {
         pam_syslog(pamh,LOG_ERR,"cannot retrieve user\n");
         return PAM_AUTH_ERR;
+    }
+    else {
+        user = tmpstr;
     }
 
     status = pam_get_data(pamh,"llxgvagate.auth.status",&data);
@@ -218,7 +236,7 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
         pam_syslog(pamh,LOG_INFO,"Status:%d\n",status);
 
         if (status == Gate::ExpiredPassword) {
-            pam_syslog(pamh,LOG_INFO,"Password for %s has expired\n",user);
+            pam_syslog(pamh,LOG_INFO,"Password for %s has expired\n",user.c_str());
             pam_info(pamh,"Password has expired\n");
 
             return PAM_ACCT_EXPIRED;
@@ -234,15 +252,17 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
         */
     }
 
-    status = pam_get_item(pamh, PAM_SERVICE, (const void**)(const void*)&service);
+    status = pam_get_item(pamh, PAM_SERVICE, (const void**)(const void*)&tmpstr);
 
     if (status == PAM_SUCCESS) {
+        service = tmpstr;
+
         if (service != "sudo") {
             pam_info(pamh,"Welcome to GVA\n");
         }
     }
 
-    pam_syslog(pamh,LOG_INFO,"Granting access to %s\n",user);
+    pam_syslog(pamh,LOG_INFO,"Granting access to %s\n",user.c_str());
     return PAM_SUCCESS;
 }
 

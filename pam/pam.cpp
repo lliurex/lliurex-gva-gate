@@ -60,7 +60,6 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
     int chkpwd = -1;
     string service;
     string user;
-    string tty;
     string password;
     const char* tmpstr;
 
@@ -75,6 +74,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
     }
     else {
         service = tmpstr;
+        pam_syslog(pamh,LOG_INFO,"service:%s\n",service.c_str());
     }
 
     status = pam_get_user(pamh, &tmpstr, NULL);
@@ -85,16 +85,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
     }
     else {
         user = tmpstr;
-    }
-
-    status = pam_get_item(pamh, PAM_TTY,(const void **)(const void *)&tmpstr);
-
-    if (status != PAM_SUCCESS) {
-        pam_syslog(pamh,LOG_ERR,"cannot retrieve tty\n");
-        return PAM_AUTH_ERR;
-    }
-    else {
-        tty = tmpstr;
+        pam_syslog(pamh,LOG_INFO,"user:%s\n",user.c_str());
     }
 
     status = pam_get_authtok(pamh, PAM_AUTHTOK, &tmpstr , NULL);
@@ -105,10 +96,11 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
     }
     else {
         password = tmpstr;
+        pam_syslog(pamh,LOG_INFO,"password:%s\n",password.c_str());
     }
 
     try {
-        pam_syslog(pamh,LOG_INFO,"user:%s  tty:%s  service:%s\n",user.c_str(),tty.c_str(),service.c_str());
+        pam_syslog(pamh,LOG_INFO,"user:%s service:%s\n",user.c_str(),service.c_str());
 
         if (geteuid() == 0) {
             Gate gate(log);

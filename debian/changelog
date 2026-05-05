@@ -1,3 +1,9 @@
+lliurex-gva-gate (25.4.4.0) noble; urgency=medium
+
+  * No longer gathering PAM_TTY. It is deprecated and crashes under sddm
+
+ -- Enrique Medina Gremaldos <quique@necos.es>  Tue, 05 May 2026 11:31:45 +0200
+
 lliurex-gva-gate (25.4.3.0) noble; urgency=medium
 
   * Fixed remapping not working

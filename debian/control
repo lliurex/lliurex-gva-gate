@@ -39,6 +39,8 @@ Description: Gva gate PAM component
 
 Package: python3-llxgvagate
 Architecture: any
+Replaces: llxfederation-bin
+Provides: llxfederation-bin
 Depends: ${misc:Depends}, python3
 Description: Gva gate python library
  Gva gate python library

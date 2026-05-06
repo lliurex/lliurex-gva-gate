@@ -4,7 +4,7 @@ Cada plugin hereda de BasePlugin e implementa 'name' y 'execute'.
 """
 
 from abc import ABC, abstractmethod
-from llxgvagate import User
+from llxgvagate.user import User
 
 class BasePlugin(ABC):
 
@@ -15,7 +15,7 @@ class BasePlugin(ABC):
         ...
 
     @abstractmethod
-    def autenticate(self, user, password, callback) -> User | None:
+    def authenticate(self, user, password, callback) -> User | None:
         """Lógica del plugin. Devuelve un string o None."""
         ...
 

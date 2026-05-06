@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 import importlib
 import inspect
+import types
 
 from llxgvagate.error import GvaGateError   # pyright: ignore[reportMissingImports]
 from llxgvagate.base_plugin import BasePlugin   # pyright: ignore[reportMissingImports]
@@ -29,13 +30,15 @@ class GvaGate:
         self.load_plugins()
 
     def load_plugins(self):
-        for path in self.plu.glob("*.py"):
+        for path in self.plugins_path.glob("*.py"):
             if path.name.startswith("_"):
                 continue  # Ignorar __init__.py etc.
-
-            module_name = f"plugins.{path.stem}"
+            
             try:
-                module = importlib.import_module(module_name)
+                loader = importlib.machinery.SourceFileLoader(path.stem, str(path))
+                module = types.ModuleType(path.stem)
+                loader.exec_module(module)
+
             except Exception as e:
                 print(f"[warn] No se pudo cargar '{path.name}': {e}")
                 continue

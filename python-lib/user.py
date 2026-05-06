@@ -1,5 +1,5 @@
 from json import dumps
-from llxfederation.mapper import CdcMapper
+from llxgvagate.mapper import CdcMapper
 
 
 class User:

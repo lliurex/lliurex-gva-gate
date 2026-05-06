@@ -17,4 +17,4 @@ urls = {repository="https://github.com/lliurex/lliurex-gva-gate"}
 packages = ["llxgvagate"]
 
 [tool.setuptools.package-dir]
-llxfederation = "python-lib"
+llxgvagate = "python-lib"

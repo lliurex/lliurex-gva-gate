@@ -1,3 +1,9 @@
+lliurex-gva-gate (25.5.0.0) noble; urgency=medium
+
+  *  Add python library for libgva
+
+ -- Raul Rodrigo Segura <raurodse@gmail.com>  Wed, 06 May 2026 12:20:57 +0200
+
 lliurex-gva-gate (25.4.4.0) noble; urgency=medium
 
   * No longer gathering PAM_TTY. It is deprecated and crashes under sddm

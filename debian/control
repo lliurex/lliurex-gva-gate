@@ -36,3 +36,9 @@ Architecture: any
 Depends: ${misc:Depends}
 Description: Gva gate PAM component
  Gva gate PAM plugin library
+
+Package: python3-llxgvagate
+Architecture: any
+Depends: ${misc:Depends}, python3
+Description: Gva gate python library
+ Gva gate python library

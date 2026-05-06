@@ -1,2 +1,2 @@
 python-lib/*	/usr/lib/python3/dist-packages/llxgvagate
-python/llxgvagate	/usr/lib/gva-gate/
+python/libgva	/usr/lib/gva-gate/

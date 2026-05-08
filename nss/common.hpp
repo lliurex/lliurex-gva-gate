@@ -35,7 +35,7 @@ namespace lliurex
         std::string shell;
     };
 
-    int push_string(string in,char** buffer, size_t* remain)
+    int push_string(std::string in,char** buffer, size_t* remain)
     {
         size_t fsize = in.size() + 1;
         if (fsize > *remain) {
@@ -68,9 +68,9 @@ namespace lliurex
             return -1;
         }
 
-        vector<char*> tmp;
+        std::vector<char*> tmp;
 
-        for (string member : source.members) {
+        for (std::string member : source.members) {
             char* q = ptr;
             if (push_string(member,&ptr,&buflen) == -1) {
                 return -1;

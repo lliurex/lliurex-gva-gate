@@ -41,7 +41,7 @@ namespace lliurex
 
     std::mutex pmtx;
 
-    int index = -1;
+    int pindex = -1;
 }
 
 /**
@@ -103,7 +103,7 @@ enum nss_status _nss_llxgvaborder_getpwuid_r(uid_t uid, struct passwd* result, c
 {
     std::lock_guard<std::mutex> lock(lliurex::pmtx);
 
-    for (lliurex::Passwd& user:users) {
+    for (lliurex::Passwd& user : lliurex::users) {
         if (user.uid == uid) {
             int status = lliurex::push_passwd(user,result,buffer,buflen);
 
@@ -126,7 +126,7 @@ enum nss_status _nss_llxgvaborder_getpwnam_r(const char* name, struct passwd* re
     bool found = false;
     lliurex::Passwd pwd;
 
-    for (lliurex::Passwd& user:users) {
+    for (lliurex::Passwd& user : lliurex::users) {
         if (user.name.compare(name) == 0) {
             //user found, return it
             pwd = user;

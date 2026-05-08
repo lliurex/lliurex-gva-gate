@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
+#include "common.hpp"
 #include "libllxgvagate.hpp"
 #include "observer.hpp"
 
@@ -39,24 +40,6 @@ extern "C" enum nss_status _nss_llxgvagate_getpwnam_r(const char* name, struct p
 
 namespace lliurex
 {
-    struct Group
-    {
-        std::string name;
-        uint64_t gid;
-        std::vector<std::string> members;
-    };
-
-    struct Passwd
-    {
-        std::string name;
-        uint64_t uid;
-        uint64_t gid;
-
-        std::string gecos;
-
-        std::string dir;
-        std::string shell;
-    };
 
     std::mutex mtx;
     std::mutex pmtx;
@@ -75,106 +58,6 @@ namespace lliurex
 static void log(int priority,string message)
 {
     syslog(priority,"%s",message.c_str());
-}
-
-static int push_string(string in,char** buffer, size_t* remain)
-{
-    size_t fsize = in.size() + 1;
-    if (fsize > *remain) {
-        return -1;
-    }
-
-    std::memcpy(*buffer,in.c_str(),fsize);
-
-    *remain -= fsize;
-    *buffer += fsize;
-
-    return 0;
-}
-
-static int push_group(lliurex::Group& source, struct group* result, char* buffer, size_t buflen)
-{
-    char* ptr = buffer;
-
-    result->gr_gid = source.gid;
-
-    result->gr_name = ptr;
-
-    if (push_string(source.name,&ptr,&buflen) == -1) {
-        return -1;
-    }
-
-    result->gr_passwd = ptr;
-
-    if (push_string("x",&ptr,&buflen) == -1) {
-        return -1;
-    }
-
-    vector<char*> tmp;
-
-    for (string member : source.members) {
-        char* q = ptr;
-        if (push_string(member,&ptr,&buflen) == -1) {
-            return -1;
-        }
-        tmp.push_back(q);
-    }
-
-    if ( (sizeof(char*)*(tmp.size()+1)) > buflen) {
-        return -1;
-    }
-
-    result->gr_mem = (char**) ptr;
-
-    int n = 0;
-
-    for (n = 0;n<tmp.size();n++) {
-        result->gr_mem[n] = tmp[n];
-    }
-
-    result->gr_mem[n] = 0;
-
-    return 0;
-}
-
-static int push_passwd(lliurex::Passwd& source, struct passwd* result, char* buffer, size_t buflen)
-{
-    char* ptr = buffer;
-
-    result->pw_uid = source.uid;
-    result->pw_gid = source.gid;
-
-    result->pw_name = ptr;
-
-    if (push_string(source.name,&ptr,&buflen) == -1) {
-        return -1;
-    }
-
-    result->pw_passwd = ptr;
-
-    if (push_string("x",&ptr,&buflen) == -1) {
-        return -1;
-    }
-
-    result->pw_gecos = ptr;
-
-    if (push_string(source.gecos,&ptr,&buflen) == -1) {
-        return -1;
-    }
-
-    result->pw_dir = ptr;
-
-    if (push_string(source.dir,&ptr,&buflen) == -1) {
-        return -1;
-    }
-
-    result->pw_shell = ptr;
-
-    if (push_string(source.shell,&ptr,&buflen) == -1) {
-        return -1;
-    }
-
-    return 0;
 }
 
 int update_db()
@@ -280,7 +163,7 @@ nss_status _nss_llxgvagate_getgrent_r(struct group* result, char* buffer, size_t
 
     lliurex::Group& grp = lliurex::groups[lliurex::index];
 
-    int status = push_group(grp,result,buffer,buflen);
+    int status = lliurex::push_group(grp,result,buffer,buflen);
     if (status == -1) {
         *errnop = ERANGE;
         return NSS_STATUS_TRYAGAIN;
@@ -303,7 +186,7 @@ nss_status _nss_llxgvagate_getgrgid_r(gid_t gid, struct group* result, char* buf
     for (lliurex::Group& grp : lliurex::groups) {
         if (grp.gid==gid) {
 
-            int status = push_group(grp,result,buffer,buflen);
+            int status = lliurex::push_group(grp,result,buffer,buflen);
             if (status == -1) {
                 *errnop = ERANGE;
                 return NSS_STATUS_TRYAGAIN;
@@ -331,7 +214,7 @@ nss_status _nss_llxgvagate_getgrnam_r(const char* name, struct group* result, ch
     for (lliurex::Group& grp : lliurex::groups) {
         if (grp.name==std::string(name)) {
 
-            int status = push_group(grp,result,buffer,buflen);
+            int status = lliurex::push_group(grp,result,buffer,buflen);
             if (status == -1) {
                 *errnop = ERANGE;
                 return NSS_STATUS_TRYAGAIN;
@@ -380,7 +263,7 @@ enum nss_status _nss_llxgvagate_getpwent_r(struct passwd* result, char* buffer, 
     lliurex::Passwd& pwd = lliurex::users[lliurex::pindex];
     //syslog(LOG_INFO,"* %s\n",pwd.name.c_str());
 
-    int status = push_passwd(pwd,result,buffer,buflen);
+    int status = lliurex::push_passwd(pwd,result,buffer,buflen);
     if (status == -1) {
         *errnop = ERANGE;
         return NSS_STATUS_TRYAGAIN;
@@ -404,7 +287,7 @@ enum nss_status _nss_llxgvagate_getpwuid_r(uid_t uid, struct passwd* result, cha
 
         if (pwd.uid == uid) {
 
-            int status = push_passwd(pwd,result,buffer,buflen);
+            int status = lliurex::push_passwd(pwd,result,buffer,buflen);
             if (status == -1) {
                 *errnop = ERANGE;
                 return NSS_STATUS_TRYAGAIN;
@@ -429,7 +312,7 @@ enum nss_status _nss_llxgvagate_getpwnam_r(const char* name, struct passwd* resu
 
         if (pwd.name.compare(name) == 0) {
 
-            int status = push_passwd(pwd,result,buffer,buflen);
+            int status = lliurex::push_passwd(pwd,result,buffer,buflen);
             if (status == -1) {
                 *errnop = ERANGE;
                 return NSS_STATUS_TRYAGAIN;

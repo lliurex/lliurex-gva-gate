@@ -42,6 +42,8 @@ Architecture: any
 Replaces: llxfederation-bin
 Provides: llxfederation-bin
 Breaks: llxfederation-bin(<= 0.10.2.1)
-Depends: ${misc:Depends}, python3
+Depends: ${misc:Depends}, 
+ python3, 
+ python3-murmurhash
 Description: Gva gate python library
  Gva gate python library

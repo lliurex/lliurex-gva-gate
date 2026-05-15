@@ -27,6 +27,17 @@
 #define LLX_GVA_GATE_SHADOW_DB_FILE "shadow.db"
 #define LLX_GVA_GATE_SHADOW_DB_PATH LLX_GVA_GATE_DB_PATH LLX_GVA_GATE_SHADOW_DB_FILE
 
+
+#define LLX_GVA_BORDER_PATH "/run/"
+
+#define LLX_GVA_BORDER_DB_MAGIC "LLX-BORDERDB"
+#define LLX_GVA_BORDER_DB_FILE "llx-gva-border.db"
+#define LLX_GVA_BORDER_DB_PATH LLX_GVA_BORDER_PATH LLX_GVA_BORDER_DB_FILE
+
+#define LLX_GVA_BORDER_MIN_UID 90000
+#define LLX_GVA_BORDER_MAX_UID 91024
+#define LLX_GVA_BORDER_DEFAULT_GID 65534 /* nogroup */
+
 namespace lliurex
 {
     enum class Validator {

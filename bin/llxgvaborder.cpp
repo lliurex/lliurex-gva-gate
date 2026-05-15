@@ -1,4 +1,8 @@
+// SPDX-FileCopyrightText: 2026 Enrique M.G. <quique@necos.es>
+//
+// SPDX-License-Identifier: LGPL-2.1-or-later
 
+#include "libllxgvagate.hpp"
 
 #include <unistd.h>
 #include <termios.h>
@@ -24,6 +28,10 @@ int main(int argc,char* argv[])
     struct passwd* user_info;
     uid_t uid = getuid();
 
+    if (uid < LLX_GVA_BORDER_MIN_UID) {
+        return EX_NOPERM;
+    }
+
     user_info = getpwuid(uid);
 
     if (!user_info) {
@@ -38,10 +46,16 @@ int main(int argc,char* argv[])
         return EX_DATAERR;
     }
 
+    if (user_info->pw_uid == uid) {
+        return EX_NOPERM;
+    }
+
+    /*
     syslog(LOG_INFO,"arg count: %d",argc);
     for (int n=0;n<argc;n++) {
         syslog(LOG_INFO,"args: %s",argv[n]);
     }
+    */
 
     pid_t shell = fork();
 

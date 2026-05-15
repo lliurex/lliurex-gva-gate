@@ -38,8 +38,8 @@ namespace lliurex
 
     std::vector<lliurex::Passwd> users;
 
-    uint32_t start_uid = 90000;
-    uint32_t default_gid = 65534;
+    uint32_t start_uid = LLX_GVA_BORDER_MIN_UID;
+    uint32_t default_gid = LLX_GVA_BORDER_DEFAULT_GID;
 
     std::mutex pmtx;
 
@@ -50,7 +50,7 @@ Variant get_users()
 {
     Variant data = Variant::create_array(0);
 
-    lliurex::FileDB db("/tmp/llx-gva-border","LLX-BORDER");
+    lliurex::FileDB db(LLX_GVA_BORDER_DB_PATH,LLX_GVA_BORDER_DB_MAGIC);
 
     try {
 
@@ -192,11 +192,11 @@ enum nss_status _nss_llxgvaborder_getpwnam_r(const char* name, struct passwd* re
         pwd.uid = max_id + 1;
         pwd.gid = lliurex::default_gid;
         pwd.gecos = "";
-        pwd.dir = "/var/run/llx-gva-gate/border/home/" + pwd.name;
+        pwd.dir = LLX_GVA_BORDER_PATH"/home/" + pwd.name;
         pwd.shell = "/bin/llx-gva-border";
 
 
-        lliurex::FileDB db("/tmp/llx-gva-border","LLX-BORDER");
+        lliurex::FileDB db(LLX_GVA_BORDER_DB_PATH,LLX_GVA_BORDER_DB_MAGIC);
 
         if (!db.exists()) {
             syslog(LOG_DEBUG,"creating border cache\n");

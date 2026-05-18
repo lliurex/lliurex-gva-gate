@@ -10,6 +10,7 @@
 #include <grp.h>
 #include <pwd.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 #include <cstdint>
 #include <cstdlib>
@@ -187,6 +188,11 @@ enum nss_status _nss_llxgvaborder_getpwnam_r(const char* name, struct passwd* re
 
     //user not found, create it
     if (!found) {
+
+        if (geteuid() != 0) {
+            return NSS_STATUS_NOTFOUND;
+        }
+
         syslog(LOG_DEBUG,"adding user %s to border cache...\n",name);
         pwd.name = name;
         pwd.uid = max_id + 1;

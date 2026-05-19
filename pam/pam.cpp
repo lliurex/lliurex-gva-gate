@@ -26,11 +26,6 @@ static void log(int priority,string message)
     syslog(priority,"%s",message.c_str());
 }
 
-static void cleanup (pam_handle_t* pamh,void* data,int error_status)
-{
-    free(data);
-}
-
 PAM_EXTERN int pam_sm_setcred( pam_handle_t* pamh, int flags, int argc, const char** argv )
 {
     pam_syslog(pamh,LOG_DEBUG,"pam_sm_setcred(%d)\n",flags);
@@ -153,7 +148,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
 
         global_auth_status = chkpwd;
         void* data = &global_auth_status;
-        pam_set_data(pamh,"llxgvagate.auth.status",data,cleanup);
+        pam_set_data(pamh,"llxgvagate.auth.status",data,nullptr);
 
         switch (chkpwd) {
             case Gate::Allowed:
@@ -245,17 +240,10 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
         */
     }
     else {
-        pam_syslog(pamh,LOG_ERR,"Failed to retrieve auth.status key\n");
-    }
+        pam_syslog(pamh,LOG_INFO,"Failed to retrieve auth.status key, maybe auth module was not called before\n");
 
-    status = pam_get_item(pamh, PAM_SERVICE, (const void**)(const void*)&tmpstr);
-
-    if (status == PAM_SUCCESS) {
-        service = tmpstr;
-
-        if (service != "sudo") {
-            pam_info(pamh,"Welcome to GVA\n");
-        }
+        //return PAM_USER_UNKNOWN;
+        return PAM_SUCCESS;
     }
 
     pam_syslog(pamh,LOG_INFO,"Granting access to %s\n",user.c_str());

@@ -19,14 +19,11 @@
 using namespace lliurex;
 using namespace std;
 
+int global_auth_status;
+
 static void log(int priority,string message)
 {
     syslog(priority,"%s",message.c_str());
-}
-
-static void cleanup (pam_handle_t* pamh,void* data,int error_status)
-{
-    free(data);
 }
 
 PAM_EXTERN int pam_sm_setcred( pam_handle_t* pamh, int flags, int argc, const char** argv )
@@ -69,7 +66,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
     status = pam_get_item(pamh, PAM_SERVICE, (const void**)(const void*)&tmpstr);
 
     if (status != PAM_SUCCESS) {
-        pam_syslog(pamh,LOG_ERR,"cannot retrieve service\n");
+        pam_syslog(pamh,LOG_ERR,"Cannot retrieve service\n");
         return PAM_AUTH_ERR;
     }
     else {
@@ -80,7 +77,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
     status = pam_get_user(pamh, &tmpstr, NULL);
 
     if (status != PAM_SUCCESS) {
-        pam_syslog(pamh,LOG_ERR,"cannot retrieve user\n");
+        pam_syslog(pamh,LOG_ERR,"Cannot retrieve user\n");
         return PAM_AUTH_ERR;
     }
     else {
@@ -91,12 +88,11 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
     status = pam_get_authtok(pamh, PAM_AUTHTOK, &tmpstr , NULL);
 
     if (status != PAM_SUCCESS) {
-        pam_syslog(pamh,LOG_ERR,"cannot retrieve password\n");
+        pam_syslog(pamh,LOG_ERR,"Cannot retrieve password\n");
         return PAM_AUTH_ERR;
     }
     else {
         password = tmpstr;
-        pam_syslog(pamh,LOG_INFO,"password:%s\n",password.c_str());
     }
 
     try {
@@ -150,9 +146,9 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
 
         pam_syslog(pamh,LOG_INFO,"local look-up:%d\n",chkpwd);
 
-        void* data = malloc(sizeof(int));
-        *((int*)data) = chkpwd;
-        pam_set_data(pamh,"llxgvagate.auth.status",data,cleanup);
+        global_auth_status = chkpwd;
+        void* data = &global_auth_status;
+        pam_set_data(pamh,"llxgvagate.auth.status",data,nullptr);
 
         switch (chkpwd) {
             case Gate::Allowed:
@@ -214,7 +210,7 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
     status = pam_get_user(pamh, &tmpstr, NULL);
 
     if (status != PAM_SUCCESS) {
-        pam_syslog(pamh,LOG_ERR,"cannot retrieve user\n");
+        pam_syslog(pamh,LOG_ERR,"Cannot retrieve user\n");
         return PAM_AUTH_ERR;
     }
     else {
@@ -225,7 +221,7 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
 
     if (status == PAM_SUCCESS) {
         status = *((int *)data);
-        pam_syslog(pamh,LOG_INFO,"Status:%d\n",status);
+        pam_syslog(pamh,LOG_INFO,"Acct status:%d\n",status);
 
         if (status == Gate::ExpiredPassword) {
             pam_syslog(pamh,LOG_INFO,"Password for %s has expired\n",user.c_str());
@@ -243,15 +239,11 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
         }
         */
     }
+    else {
+        pam_syslog(pamh,LOG_INFO,"Failed to retrieve auth.status key, maybe auth module was not called before\n");
 
-    status = pam_get_item(pamh, PAM_SERVICE, (const void**)(const void*)&tmpstr);
-
-    if (status == PAM_SUCCESS) {
-        service = tmpstr;
-
-        if (service != "sudo") {
-            pam_info(pamh,"Welcome to GVA\n");
-        }
+        //return PAM_USER_UNKNOWN;
+        return PAM_SUCCESS;
     }
 
     pam_syslog(pamh,LOG_INFO,"Granting access to %s\n",user.c_str());

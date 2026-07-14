@@ -1,3 +1,10 @@
+lliurex-gva-gate (25.6.0.1) noble; urgency=medium
+
+  * Add setuid to llx-gva-border binary. It's needed to modify temporary home
+    permissions
+
+ -- Raul Rodrigo Segura <raurodse@gmail.com>  Tue, 14 Jul 2026 13:22:10 +0200
+
 lliurex-gva-gate (25.6.0.0) noble; urgency=medium
 
   * Added a border nss plugin in order to pre-accept remote users not in the database already

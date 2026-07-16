@@ -309,9 +309,7 @@ int main(int argc,char* argv[])
 
         }
 
-        if (cmd == "auth") {
-            clog<<"status:"<<message<<endl;
-        }
+        log(LOG_DEBUG,"status:" + message + "\n");
 
         if (status == Gate::Allowed and cmd == "su") {
 

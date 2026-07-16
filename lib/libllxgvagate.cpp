@@ -546,7 +546,12 @@ int Gate::authenticate(string user,string password, Variant& out)
 
                     if (status != Gate::UserNotFound) {
                         // extra check?
-                        lookup_user(username, out);
+                        Variant user_data = Variant::create_struct();
+                        user_data["status"] = status;
+                        Variant tmp;
+                        lookup_user(username, tmp);
+                        user_data["user"] = tmp;
+                        out = user_data;
                     }
                 }
                 catch(std::exception& e) {

@@ -1,3 +1,10 @@
+lliurex-gva-gate (25.6.1.0) noble; urgency=medium
+
+  * Fixed bug with cache users
+  * Add to nsswitch border plugin
+
+ -- Raul Rodrigo Segura <raurodse@gmail.com>  Fri, 17 Jul 2026 13:22:09 +0200
+
 lliurex-gva-gate (25.6.0.1) noble; urgency=medium
 
   * Add setuid to llx-gva-border binary. It's needed to modify temporary home

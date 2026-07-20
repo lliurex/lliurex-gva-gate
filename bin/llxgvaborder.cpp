@@ -15,8 +15,42 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 using namespace std;
+
+void create_home(string basepath,string username,uid_t uid, gid_t gid)
+{
+    try {
+        std::filesystem::create_directory(basepath);
+
+        int status = chmod(basepath.c_str(), 0755);
+
+        if (status != 0) {
+            cerr<<"failed to set 0755 permissions to "<<basepath<<endl;
+        }
+
+        string homepath = basepath + "/" + username;
+
+        std::filesystem::create_directory(homepath);
+
+        status = chmod(homepath.c_str(), 0750);
+
+        if (status != 0) {
+            cerr<<"failed to set 0750 permissions to "<<homepath<<endl;
+        }
+
+        status = chown(homepath.c_str(),uid,gid);
+
+        if (status != 0) {
+            cerr<<"failed to set owner to "<<homepath<<endl;
+        }
+
+    }
+    catch(std::exception& e) {
+        cerr<<e.what()<<endl;
+    }
+}
 
 int main(int argc,char* argv[])
 {
@@ -49,6 +83,8 @@ int main(int argc,char* argv[])
     if (user_info->pw_uid == uid) {
         return EX_NOPERM;
     }
+
+    //create_home();
 
     /*
     syslog(LOG_INFO,"arg count: %d",argc);

@@ -26,7 +26,7 @@ class User:
             data = json_load(filetype.open())
             self.types_user[data["type"]] = data["regex"]
 
-    def new_populate_user(self):
+    def populate_user(self):
         user_types = []
         temp_groups = {}
         for x in self.groups:
@@ -49,9 +49,11 @@ class User:
                 self.gid = x
 
     def __str__(self) -> str:
-        return dumps(self.__dict__, 
+        data = self.__dict__.copy()
+        data.pop("types_user", None)
+        return dumps(data,
                      default=lambda o: o.__dict__,
-                     indent=4, 
+                     indent=4,
                      ensure_ascii=False)
 
 

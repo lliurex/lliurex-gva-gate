@@ -1,4 +1,5 @@
-from json import load as json_load, dumps
+from json import dumps
+from json import load as json_load
 from pathlib import Path
 from re import match as re_match
 

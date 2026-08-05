@@ -9,14 +9,57 @@
 #include <sysexits.h>
 #include <pwd.h>
 #include <grp.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <syslog.h>
 
 #include <iostream>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 using namespace std;
+
+void create_home(string path,uid_t uid, gid_t gid)
+{
+    try {
+        int status;
+
+        std::filesystem::path fs_path(path);
+        std::string basepath = fs_path.parent_path().string();
+
+        if (!std::filesystem::exists(basepath)) {
+            std::filesystem::create_directory(basepath);
+
+            status = chmod(basepath.c_str(), 0755);
+
+            if (status != 0) {
+                cerr<<"failed to set 0755 permissions to "<<basepath<<endl;
+            }
+
+        }
+
+        if (!std::filesystem::exists(path)) {
+            std::filesystem::create_directory(path);
+
+            status = chmod(path.c_str(), 0750);
+
+            if (status != 0) {
+                cerr<<"failed to set 0750 permissions to "<<path<<endl;
+            }
+
+            status = chown(path.c_str(),uid,gid);
+
+            if (status != 0) {
+                cerr<<"failed to set owner to "<<path<<endl;
+            }
+        }
+
+    }
+    catch(std::exception& e) {
+        cerr<<e.what()<<endl;
+    }
+}
 
 int main(int argc,char* argv[])
 {
@@ -50,12 +93,7 @@ int main(int argc,char* argv[])
         return EX_NOPERM;
     }
 
-    /*
-    syslog(LOG_INFO,"arg count: %d",argc);
-    for (int n=0;n<argc;n++) {
-        syslog(LOG_INFO,"args: %s",argv[n]);
-    }
-    */
+    create_home(user_info->pw_dir, user_info->pw_uid, user_info->pw_gid);
 
     pid_t shell = fork();
 

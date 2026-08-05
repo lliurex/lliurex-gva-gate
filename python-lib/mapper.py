@@ -1,8 +1,8 @@
-from pathlib import Path
-import json
 import grp
-from functools import reduce
-import murmurhash.mrmr as mrmr
+import json
+from pathlib import Path
+
+from murmurhash import mrmr
 
 
 class CdcMapper:
@@ -19,14 +19,11 @@ class CdcMapper:
         self.alu_groups = []
         self.doc_groups = []
         self.adm_groups = []
-        self.default_info = {"alu": False, "doc": False, "adm": False}
 
     def check_json(self, info):
-        if "name" not in info.keys():
-            return False
-        return True
+        return "name" in info
 
-    def get_groups(self, user_mode):
+    def get_groups(self, user_groups_type):
         groups = []
         for folder_path in self.groups_folders:
             if not folder_path.exists():
@@ -34,43 +31,52 @@ class CdcMapper:
             for file_path in folder_path.iterdir():
                 try:
                     with file_path.open("r") as fd:
-                        temp_info = json.load(fd)
+                        group_info = json.load(fd)
                 except Exception:
-                    temp_info = None
-                if temp_info is not None:
+                    group_info = None
+                if group_info is not None:
                     # Define default values for info object
-                    info = self.default_info.copy()
-                    info.update(temp_info)
-                    aux = self.process_group(info, user_mode)
+                    aux = self.process_group(group_info, user_groups_type)
                     if aux is not None:
                         groups.append(aux)
         return groups
 
-    def process_group(self, info, mode):
-        if not self.check_json(info):
+    def process_group(self, group_info, user_groups_type):
+        if not self.check_json(group_info) or \
+           not self.validate_in_group(group_info, user_groups_type):
             return None
-        args = {"name": info["name"]}
+
+        args = {"name": group_info["name"]}
+        args = self.set_gid_from_name(args, group_info)
+        if "gid" in group_info:
+            args["default_id"] = group_info["gid"]
+        if "default_gid" in group_info:
+            args["default_gid"] = group_info["default_gid"]
+        return args
+
+    def validate_in_group(self, group_info, user_groups_type):
+        if "types" in group_info:
+            '''New format'''
+            '''
+                compact form to get all boolean values of the types in the
+                group_info that are present in the user_groups_type
+            '''
+            all_groups_values = [group_info["types"][key] for key in user_groups_type if key in group_info["types"]]
+        else:
+            '''Old format'''
+            valid_values = ["alu", "doc", "adm"]
+            checked_groups = list(set(valid_values) & set(user_groups_type))
+            all_groups_values = [group_info[key] for key in checked_groups if key in group_info]
+        return any(all_groups_values)
+
+    def set_gid_from_name(self, args, info):
         try:
             args["gid"] = grp.getgrnam(info["name"]).gr_gid
-        except Exception:
+        except KeyError:
             if "gid" in info:
                 args["gid"] = info["gid"]
-            else:
-                pass
-        if "gid" in info:
-            args["default_id"] = info["gid"]
-        if "default_gid" in info:
-            args["default_gid"] = info["default_gid"]
-        if (self.get_mask([info["adm"], info["doc"], info["alu"]]) & mode) > 0:
-            return args
-        return None
 
-    @staticmethod
-    def _f(a, b):
-        return (a << 1) | b
-
-    def get_mask(self, user_binary):
-        return reduce(CdcMapper._f, user_binary)
+        return args
 
 
 class SSSDMapper:

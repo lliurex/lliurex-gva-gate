@@ -1,4 +1,8 @@
 from json import dumps
+from json import load as json_load
+from pathlib import Path
+from re import match as re_match
+
 from llxgvagate.mapper import CdcMapper
 
 
@@ -9,38 +13,40 @@ class User:
         self.login = clean_login
         self.name = ""
         self.surname = ""
-        self.home = "/home/{}".format(clean_login)
+        self.home = f"/home/{clean_login}"
         self.shell = "/bin/bash"
         self.uid = -1
         self.gid = -1
         self.groups = []
+        self.load_types_user()
 
-    def populate_user(self):
-        user_mod = 0
+    def load_types_user(self):
+        self.types_user = {}
+        for filetype in Path("/usr/share/cdc-mapper/types").glob("*.json"):
+            data = json_load(filetype.open())
+            self.types_user[data["type"]] = data["regex"]
+
+    def new_populate_user(self):
+        user_types = []
         temp_groups = {}
         for x in self.groups:
-            group_lower = x.name.lower()
-            if group_lower.startswith("doc"):
-                user_mod = user_mod | CdcMapper.TEACHERS
-            if group_lower.startswith("alu"):
-                user_mod = user_mod | CdcMapper.STUDENTS
-            if group_lower.startswith("adm"):
-                user_mod = user_mod | CdcMapper.ADMINS
-            cdcmapper = CdcMapper()
-            aux_group = cdcmapper.get_groups(user_mod)
-            for x in aux_group:
-                g = Group(x["name"], x["gid"])
-                if "default_gid" in x:
-                    g.default_gid = x["default_gid"]
-                temp_groups[g.name] = g
+            for key, value in self.types_user.items():
+                if re_match(value, x.name.lower()):
+                    user_types.append(key)
+        cdcmapper = CdcMapper()
+        aux_groups = cdcmapper.get_groups(user_types)
+        for x in aux_groups:
+            g = Group(x["name"], x["gid"])
+            if "default_gid" in x:
+                g.default_gid = x["default_gid"]
+            temp_groups[g.name] = g
         max_id = 0
-        for name,item in temp_groups.items():
+        for item in temp_groups.values():
             self.groups.append(item)
         for x in self.groups:
-            if x.default_gid > -1 :
-                if x.default_gid > max_id:
-                    max_id = x.default_gid
-                    self.gid = x
+            if x.default_gid > -1 and x.default_gid > max_id:
+                max_id = x.default_gid
+                self.gid = x
 
     def __str__(self) -> str:
         return dumps(self.__dict__, 

@@ -6,11 +6,14 @@
 #include "filedb.hpp"
 #include "libllxgvagate.hpp"
 
+#include <process.hpp>
+
 #include <nss.h>
 #include <grp.h>
 #include <pwd.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <limits.h>
 
 #include <cstdint>
 #include <cstdlib>
@@ -22,9 +25,11 @@
 #include <mutex>
 #include <chrono>
 #include <functional>
+#include <map>
 
 using namespace edupals;
 using namespace edupals::variant;
+using namespace edupals::system;
 
 using namespace std;
 
@@ -37,6 +42,7 @@ extern "C" enum nss_status _nss_llxgvaborder_getpwnam_r(const char* name, struct
 namespace lliurex
 {
 
+    std::vector<std::string> whitelist = {"/usr/bin/su","/usr/sbin/sshd"};
     std::vector<lliurex::Passwd> users;
 
     uint32_t start_uid = LLX_GVA_BORDER_MIN_UID;
@@ -166,6 +172,39 @@ enum nss_status _nss_llxgvaborder_getpwuid_r(uid_t uid, struct passwd* result, c
 enum nss_status _nss_llxgvaborder_getpwnam_r(const char* name, struct passwd* result, char* buffer, size_t buflen, int* errnop)
 {
     std::lock_guard<std::mutex> lock(lliurex::pmtx);
+
+    Process me = Process::me();
+
+    char exebuffer[PATH_MAX];
+    string exe = me.proc() + "/exe";
+
+    int nread = readlink(exe.c_str(), exebuffer, PATH_MAX);
+
+    if (nread == -1) {
+        syslog(LOG_DEBUG,"cannot read exe: %d\n",errno);
+        /* best return value? */
+        return NSS_STATUS_NOTFOUND;
+    }
+
+    exebuffer[nread] = 0;
+    exe = exebuffer;
+
+    syslog(LOG_DEBUG,"process exe: %s\n",exe.c_str());
+
+    bool whitelisted = false;
+
+    for (string w:lliurex::whitelist) {
+        if (w == exe) {
+            whitelisted = true;
+            break;
+        }
+    }
+
+    if (!whitelisted) {
+        syslog(LOG_INFO,"%s not in the whitelist, ignoring query\n",exe.c_str());
+
+        return NSS_STATUS_NOTFOUND;
+    }
 
     bool found = false;
     lliurex::Passwd pwd;

@@ -14,3 +14,9 @@ target_link_libraries(nss_llxgvaborder llxgvagate Edupals::Base)
 set_target_properties(nss_llxgvaborder PROPERTIES SOVERSION 2 VERSION "2.0.0")
 
 install(TARGETS nss_llxgvaborder LIBRARY DESTINATION "lib")
+
+add_library(nss_llxgvaguard SHARED guard.cpp)
+target_link_libraries(nss_llxgvaguard Edupals::Base)
+set_target_properties(nss_llxgvaguard PROPERTIES SOVERSION 2 VERSION "2.0.0")
+
+install(TARGETS nss_llxgvaguard LIBRARY DESTINATION "lib")

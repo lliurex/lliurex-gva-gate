@@ -32,8 +32,8 @@ Variant Exec::run(string user, string password)
     string filename = LIB_EXEC_PATH;
     stringstream data;
     stringstream args;
-    int out_fd;
-    int in_fd;
+    int out_fd = -1;
+    int in_fd = -1;
     int status;
 
     args<<user<<" "<<password<<" "<<runtime<<"\n";
@@ -45,12 +45,15 @@ Variant Exec::run(string user, string password)
             write(in_fd,&c,1);
         }
         close(in_fd);
+        in_fd = -1;
 
         char buffer;
         while (read(out_fd,&buffer,1) > 0) {
             data<<buffer;
         }
         close(out_fd);
+        out_fd = -1;
+
         status = child.wait();
         //clog<<"exec status:"<<status<<endl;
 
@@ -61,6 +64,12 @@ Variant Exec::run(string user, string password)
         }
     }
     catch (std::exception& e) {
+        if (in_fd >= 0) {
+            close(in_fd);
+        }
+        if (out_fd >= 0) {
+            close(out_fd);
+        }
         throw runtime_error(e.what());
     }
 

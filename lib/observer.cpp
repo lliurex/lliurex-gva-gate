@@ -26,7 +26,11 @@ Observer::~Observer()
 {
     if (counter_ptr) {
         munmap(counter_ptr, 4);
+        counter_ptr = nullptr;
     }
+
+    /* release the shared memory object name */
+    shm_unlink(GVA_GATE_SHARED);
 }
 
 void Observer::open()

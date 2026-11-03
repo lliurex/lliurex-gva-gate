@@ -91,13 +91,19 @@ Response Client::get(string what)
 
     Curl handler = prepare_request(server+"/"+what,response);
 
-    CURLcode status = curl_easy_perform(handler.curl);
+    try {
+        CURLcode status = curl_easy_perform(handler.curl);
 
-    if (status != 0) {
-        throw runtime_error("Client::get::curl_easy_perform("+std::to_string(status)+")");
+        if (status != 0) {
+            throw runtime_error("Client::get::curl_easy_perform("+std::to_string(status)+")");
+        }
+
+        curl_easy_getinfo(handler.curl, CURLINFO_RESPONSE_CODE, &response.status);
     }
-
-    curl_easy_getinfo(handler.curl, CURLINFO_RESPONSE_CODE, &response.status);
+    catch (...) {
+        free_request(handler);
+        throw;
+    }
 
     free_request(handler);
 
@@ -128,13 +134,19 @@ Response Client::post(string what,map<string,string> fields)
 
     curl_easy_setopt(handler.curl, CURLOPT_POSTFIELDS, pdata.c_str());
 
-    CURLcode status = curl_easy_perform(handler.curl);
+    try {
+        CURLcode status = curl_easy_perform(handler.curl);
 
-    if (status != 0) {
-        throw runtime_error("Client::post::curl_easy_perform("+std::to_string(status)+")");
+        if (status != 0) {
+            throw runtime_error("Client::post::curl_easy_perform("+std::to_string(status)+")");
+        }
+
+        curl_easy_getinfo(handler.curl, CURLINFO_RESPONSE_CODE, &response.status);
     }
-
-    curl_easy_getinfo(handler.curl, CURLINFO_RESPONSE_CODE, &response.status);
+    catch (...) {
+        free_request(handler);
+        throw;
+    }
 
     free_request(handler);
 

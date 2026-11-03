@@ -345,8 +345,9 @@ int main(int argc,char* argv[])
                 execl(user_info->pw_shell, user_info->pw_shell, nullptr);
             }
             else {
-                wait(&status);
-                return status;
+                int wait_status = 0;
+                waitpid(shell, &wait_status, 0);
+                return WIFEXITED(wait_status) ? WEXITSTATUS(wait_status) : EX_DATAERR;
             }
 
         }

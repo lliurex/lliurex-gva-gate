@@ -130,8 +130,8 @@ int main(int argc,char* argv[])
     else {
         int status;
 
-        wait(&status);
-        return status;
+        waitpid(shell, &status, 0);
+        return WIFEXITED(status) ? WEXITSTATUS(status) : EX_DATAERR;
     }
 
 }

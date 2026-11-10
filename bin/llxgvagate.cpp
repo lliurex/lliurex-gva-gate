@@ -174,7 +174,7 @@ int main(int argc,char* argv[])
 
         /* Should we assert root here? */
 
-        if (result.args.size()<3) {
+        if (result.args.size()<4) {
             return EX_USAGE;
         }
 

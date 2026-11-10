@@ -174,7 +174,7 @@ static Variant find_group(Variant groups, string name, int32_t gid)
     for (size_t n=0;n<groups.count();n++) {
         Variant group = groups[n];
 
-        if (group["name"].get_string() == name and group["gid"].get_int32()) {
+        if (group["name"].get_string() == name and group["gid"].get_int32() == gid) {
             return group;
         }
     }
@@ -282,6 +282,7 @@ int Gate::lookup_user(string user, Variant& out)
     for (size_t n = 0;n < database["users"].count();n++) {
         if (database["users"][n]["login"].get_string() == user) {
             out = database["users"][n];
+            status = Gate::Allowed;
             break;
         }
     }
@@ -754,15 +755,21 @@ bool Gate::validate(Variant data,Validator validator, string& what)
 string Gate::salt(string username)
 {
     string value;
-    const int range = 'z' - 'A';
-    const int start = 'A';
-    int32_t rnd = (int32_t)std::time(nullptr);
+    const uint32_t range = 'z' - 'A';
+    const uint32_t start = 'A';
+    uint32_t rnd = static_cast<uint32_t>(std::time(nullptr));
 
-    for (size_t n=0;n<10;n++) {
-        int m = n % username.size();
-        int32_t c = username[m] + rnd;
-        c = c % range;
-        value.push_back(start+c);
+    for (size_t n = 0; n < 10; n++) {
+        uint32_t seed = 0;
+
+        /* an empty username has no characters to index; otherwise the
+           modulo would divide by zero */
+        if (!username.empty()) {
+            seed = static_cast<unsigned char>(username[n % username.size()]);
+        }
+
+        uint32_t c = (seed + rnd) % range;
+        value.push_back(static_cast<char>(start + c));
     }
 
     return value;

@@ -1,3 +1,9 @@
+lliurex-gva-gate (25.8.1.0) noble; urgency=medium
+
+  * Huge commit of fixes, including memory leaks and unhandled situations
+
+ -- Enrique Medina Gremaldos <quique@necos.es>  Wed, 11 Nov 2026 09:47:34 +0100
+
 lliurex-gva-gate (25.8.0.0) noble; urgency=medium
 
   * Border NSS plugin ignores queries from every process not being whitelisted (sshd and su right now)

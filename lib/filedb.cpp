@@ -27,7 +27,7 @@ using namespace edupals::variant;
 using namespace std;
 namespace stdfs=std::experimental::filesystem;
 
-FileDB::FileDB() : db(nullptr)
+FileDB::FileDB() : format(DBFormat::Bson), db(nullptr)
 {
 }
 
@@ -56,6 +56,9 @@ bool FileDB::is_open()
 void FileDB::create(DBFormat format,uint32_t mode)
 {
     this->format = format;
+
+    /* avoid leaking a previously opened file handle */
+    close();
 
     db = fopen(path.c_str(),"wb");
 
@@ -116,6 +119,10 @@ void FileDB::close()
 
 void FileDB::lock_read()
 {
+    if (db == nullptr) {
+        throw runtime_error("Failed to lock for read, FileDB is not open:" + path);
+    }
+
     int fd = fileno(db);
     int status = flock(fd,LOCK_SH);
 
@@ -129,6 +136,10 @@ void FileDB::lock_read()
 
 void FileDB::lock_write()
 {
+    if (db == nullptr) {
+        throw runtime_error("Failed to lock for write, FileDB is not open:" + path);
+    }
+
     int fd = fileno(db);
     int status = flock(fd,LOCK_EX);
 
@@ -142,6 +153,10 @@ void FileDB::lock_write()
 
 void FileDB::unlock()
 {
+    if (db == nullptr) {
+        throw runtime_error("Failed to unlock, FileDB is not open:" + path);
+    }
+
     int fd = fileno(db);
     int status = flock(fd,LOCK_UN);
 
@@ -155,6 +170,9 @@ void FileDB::unlock()
 
 edupals::variant::Variant FileDB::read()
 {
+    if (db == nullptr) {
+        throw runtime_error("Failed to read, FileDB is not open:" + path);
+    }
 
     stringstream ss;
     char buffer[128];
@@ -193,6 +211,10 @@ edupals::variant::Variant FileDB::read()
 
 void FileDB::write(edupals::variant::Variant data)
 {
+    if (db == nullptr) {
+        throw runtime_error("Failed to write, FileDB is not open:" + path);
+    }
+
     stringstream ss(std::stringstream::out | std::stringstream::binary);
     //std::stringbuf buffer;
     //std::ostream ss(&buffer);

@@ -7,6 +7,7 @@
 
 #include <variant.hpp>
 #include <cstdio>
+#include <stdexcept>
 #include <string>
 
 namespace lliurex
@@ -63,23 +64,51 @@ namespace lliurex
 
             AutoLock(LockMode mode, FileDB* target) : target(target)
             {
+                bool opened = false;
+
                 switch (mode) {
                     case LockMode::Read:
-                        target->open(true);
-                        target->lock_read();
+                        opened = target->open(true);
 
                         break;
                     case LockMode::Write:
-                        target->open();
-                        target->lock_write();
+                        opened = target->open();
 
                         break;
+                }
+
+                if (!opened) {
+                    throw std::runtime_error("Failed to open FileDB");
+                }
+
+                try {
+                    switch (mode) {
+                        case LockMode::Read:
+                            target->lock_read();
+
+                            break;
+                        case LockMode::Write:
+                            target->lock_write();
+
+                            break;
+                    }
+                }
+                catch (...) {
+                    /* do not leave the file open if the lock fails */
+                    target->close();
+                    throw;
                 }
             }
 
             ~AutoLock()
             {
-                unlock();
+                try {
+                    unlock();
+                }
+                catch (...) {
+                    /* a destructor must not throw */
+                }
+
                 target->close();
             }
 

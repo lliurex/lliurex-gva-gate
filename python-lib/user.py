@@ -23,7 +23,8 @@ class User:
     def load_types_user(self):
         self.types_user = {}
         for filetype in Path("/usr/share/cdc-mapper/types").glob("*.json"):
-            data = json_load(filetype.open())
+            with filetype.open() as fd:
+                data = json_load(fd)
             self.types_user[data["type"]] = data["regex"]
 
     def populate_user(self):

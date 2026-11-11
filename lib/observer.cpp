@@ -26,17 +26,19 @@ Observer::~Observer()
 {
     if (counter_ptr) {
         munmap(counter_ptr, 4);
+        counter_ptr = nullptr;
     }
+
 }
 
 void Observer::open()
 {
     int fd = shm_open(GVA_GATE_SHARED, O_RDONLY, S_IRUSR);
 
-    if (fd > 0) {
+    if (fd >= 0) {
         uint32_t *ptr = (uint32_t *) mmap(nullptr, 4, PROT_READ, MAP_SHARED, fd, 0);
 
-        if (!ptr) {
+        if (ptr == MAP_FAILED) {
             close(fd);
             // failed to map shared memory
             return;
@@ -100,7 +102,7 @@ void Observer::push()
 
     uint32_t *ptr = (uint32_t *) mmap(nullptr, 4, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 
-    if (!ptr) {
+    if (ptr == MAP_FAILED) {
         close(fd);
         throw runtime_error("Failed to map shared memory");
     }

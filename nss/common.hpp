@@ -35,7 +35,7 @@ namespace lliurex
         std::string shell;
     };
 
-    int push_string(std::string in,char** buffer, size_t* remain)
+    inline int push_string(const std::string& in,char** buffer, size_t* remain)
     {
         size_t fsize = in.size() + 1;
         if (fsize > *remain) {
@@ -50,11 +50,11 @@ namespace lliurex
         return 0;
     }
 
-    int push_group(lliurex::Group& source, struct group* result, char* buffer, size_t buflen)
+    inline int push_group(const lliurex::Group& source, struct group* result, char* buffer, size_t buflen)
     {
         char* ptr = buffer;
 
-        result->gr_gid = source.gid;
+        result->gr_gid = static_cast<gid_t>(source.gid);
 
         result->gr_name = ptr;
 
@@ -70,7 +70,7 @@ namespace lliurex
 
         std::vector<char*> tmp;
 
-        for (std::string member : source.members) {
+        for (const std::string& member : source.members) {
             char* q = ptr;
             if (push_string(member,&ptr,&buflen) == -1) {
                 return -1;
@@ -78,13 +78,23 @@ namespace lliurex
             tmp.push_back(q);
         }
 
+        /* gr_mem is pointer aligned, but the strings before it are not */
+        size_t padding = (alignof(char*) - (reinterpret_cast<uintptr_t>(ptr) % alignof(char*))) % alignof(char*);
+
+        if (padding > buflen) {
+            return -1;
+        }
+
+        ptr += padding;
+        buflen -= padding;
+
         if ( (sizeof(char*)*(tmp.size()+1)) > buflen) {
             return -1;
         }
 
-        result->gr_mem = (char**) ptr;
+        result->gr_mem = reinterpret_cast<char**>(ptr);
 
-        int n = 0;
+        size_t n = 0;
 
         for (n = 0;n<tmp.size();n++) {
             result->gr_mem[n] = tmp[n];
@@ -95,12 +105,12 @@ namespace lliurex
         return 0;
     }
 
-    int push_passwd(lliurex::Passwd& source, struct passwd* result, char* buffer, size_t buflen)
+    inline int push_passwd(const lliurex::Passwd& source, struct passwd* result, char* buffer, size_t buflen)
     {
         char* ptr = buffer;
 
-        result->pw_uid = source.uid;
-        result->pw_gid = source.gid;
+        result->pw_uid = static_cast<uid_t>(source.uid);
+        result->pw_gid = static_cast<gid_t>(source.gid);
 
         result->pw_name = ptr;
 

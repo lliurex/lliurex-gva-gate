@@ -81,7 +81,10 @@ int main(int argc,char* argv[])
         return EX_NOPERM;
     }
 
-    user_info = getpwnam(user_info->pw_name);
+    /* getpwnam() reuses the static buffer returned by getpwuid(), so copy the
+       name before calling it or it may be overwritten while still in use */
+    string user_name = user_info->pw_name;
+    user_info = getpwnam(user_name.c_str());
 
     if (user_info == nullptr) {
         //cerr<<"Failed to fetch data from user "<<user<<", is NSS configured?"<<endl;
@@ -130,8 +133,8 @@ int main(int argc,char* argv[])
     else {
         int status;
 
-        wait(&status);
-        return status;
+        waitpid(shell, &status, 0);
+        return WIFEXITED(status) ? WEXITSTATUS(status) : EX_DATAERR;
     }
 
 }

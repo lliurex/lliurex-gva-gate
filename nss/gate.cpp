@@ -41,8 +41,10 @@ extern "C" enum nss_status _nss_llxgvagate_getpwnam_r(const char* name, struct p
 namespace lliurex
 {
 
+    /* a single mutex protects both vectors: update_db() rebuilds groups and
+       users together, so separate locks would allow one to be replaced while
+       the other is being traversed. */
     std::mutex mtx;
-    std::mutex pmtx;
 
     std::vector<lliurex::Group> groups;
     std::vector<lliurex::Passwd> users;
@@ -157,7 +159,7 @@ nss_status _nss_llxgvagate_getgrent_r(struct group* result, char* buffer, size_t
 {
     std::lock_guard<std::mutex> lock(lliurex::mtx);
 
-    if (lliurex::index == lliurex::groups.size()) {
+    if (lliurex::index < 0 || static_cast<size_t>(lliurex::index) >= lliurex::groups.size()) {
         return NSS_STATUS_NOTFOUND;
     }
 
@@ -232,7 +234,7 @@ nss_status _nss_llxgvagate_getgrnam_r(const char* name, struct group* result, ch
 enum nss_status _nss_llxgvagate_setpwent(int stayopen)
 {
     //syslog(LOG_DEBUG,"%s\n",__func__);
-    std::lock_guard<std::mutex> lock(lliurex::pmtx);
+    std::lock_guard<std::mutex> lock(lliurex::mtx);
 
     lliurex::pindex = -1;
 
@@ -254,9 +256,9 @@ enum nss_status _nss_llxgvagate_endpwent(void)
 enum nss_status _nss_llxgvagate_getpwent_r(struct passwd* result, char* buffer, size_t buflen, int* errnop)
 {
     //syslog(LOG_INFO,"%s\n",__func__);
-    std::lock_guard<std::mutex> lock(lliurex::pmtx);
+    std::lock_guard<std::mutex> lock(lliurex::mtx);
 
-    if (lliurex::pindex == lliurex::users.size()) {
+    if (lliurex::pindex < 0 || static_cast<size_t>(lliurex::pindex) >= lliurex::users.size()) {
         return NSS_STATUS_NOTFOUND;
     }
 
@@ -276,7 +278,7 @@ enum nss_status _nss_llxgvagate_getpwent_r(struct passwd* result, char* buffer, 
 
 enum nss_status _nss_llxgvagate_getpwuid_r(uid_t uid, struct passwd* result, char* buffer, size_t buflen, int* errnop)
 {
-    std::lock_guard<std::mutex> lock(lliurex::pmtx);
+    std::lock_guard<std::mutex> lock(lliurex::mtx);
 
     int db_status = update_db();
     if (db_status == -1) {
@@ -301,7 +303,7 @@ enum nss_status _nss_llxgvagate_getpwuid_r(uid_t uid, struct passwd* result, cha
 
 enum nss_status _nss_llxgvagate_getpwnam_r(const char* name, struct passwd* result, char* buffer, size_t buflen, int* errnop)
 {
-    std::lock_guard<std::mutex> lock(lliurex::pmtx);
+    std::lock_guard<std::mutex> lock(lliurex::mtx);
 
     int db_status = update_db();
     if (db_status == -1) {

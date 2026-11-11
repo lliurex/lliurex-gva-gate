@@ -127,7 +127,7 @@ PAM_EXTERN int pam_sm_authenticate( pam_handle_t* pamh, int flags,int argc, cons
                 execl("/bin/llx-gva-gate","/bin/llx-gva-gate","chkpwd",user.c_str(),password.c_str(),(char*)0);
 
                 pam_syslog(pamh,LOG_ERR,"Failed to spawn llx-gva-gate process\n");
-                return PAM_AUTH_ERR;
+                exit(PAM_AUTH_ERR);
             }
             else {
                 // parent
@@ -203,7 +203,7 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
     pam_syslog(pamh,LOG_DEBUG,"pam_sm_acct_mgmt\n");
     int status;
     string user;
-    const void* data;
+    const void* data = nullptr;
     string service;
     const char* tmpstr;
 
@@ -218,6 +218,11 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
     }
 
     status = pam_get_data(pamh,"llxgvagate.auth.status",&data);
+
+    if (!data) {
+        pam_syslog(pamh,LOG_ERR,"Cannot retrieve llxgvagate.auth.status data\n");
+        return PAM_AUTH_ERR;
+    }
 
     if (status == PAM_SUCCESS) {
         status = *((int *)data);

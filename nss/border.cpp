@@ -22,6 +22,7 @@
 #include <fstream>
 #include <string>
 #include <cstring>
+#include <stdexcept>
 #include <mutex>
 #include <chrono>
 #include <functional>
@@ -62,7 +63,9 @@ Variant get_users()
     try {
 
         if (db.exists()) {
-            db.open(true);
+            if (!db.open(true)) {
+                throw std::runtime_error("failed to open border cache");
+            }
             db.lock_read();
             data = db.read();
             db.unlock();
@@ -129,7 +132,7 @@ enum nss_status _nss_llxgvaborder_getpwent_r(struct passwd* result, char* buffer
 {
     std::lock_guard<std::mutex> lock(lliurex::pmtx);
 
-    if (lliurex::pindex == lliurex::users.size()) {
+    if (lliurex::pindex < 0 || static_cast<size_t>(lliurex::pindex) >= lliurex::users.size()) {
         return NSS_STATUS_NOTFOUND;
     }
 
@@ -178,7 +181,8 @@ enum nss_status _nss_llxgvaborder_getpwnam_r(const char* name, struct passwd* re
     char exebuffer[PATH_MAX];
     string exe = me.proc() + "/exe";
 
-    int nread = readlink(exe.c_str(), exebuffer, PATH_MAX);
+    /* leave room for the terminator: readlink() does not add one */
+    int nread = readlink(exe.c_str(), exebuffer, sizeof(exebuffer) - 1);
 
     if (nread == -1) {
         syslog(LOG_DEBUG,"cannot read exe: %d\n",errno);
@@ -243,24 +247,37 @@ enum nss_status _nss_llxgvaborder_getpwnam_r(const char* name, struct passwd* re
 
         lliurex::FileDB db(LLX_GVA_BORDER_DB_PATH,LLX_GVA_BORDER_DB_MAGIC);
 
-        if (!db.exists()) {
-            syslog(LOG_DEBUG,"creating border cache\n");
-            db.create(lliurex::DBFormat::Bson, S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR);
-            db.open();
-            db.lock_write();
-            Variant vusers = Variant::create_array(1);
-            vusers[0] = passwd_to_variant(pwd);
-            db.write(vusers);
-            db.unlock();
-            db.close();
+        try {
+            if (!db.exists()) {
+                syslog(LOG_DEBUG,"creating border cache\n");
+                db.create(lliurex::DBFormat::Bson, S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR);
+
+                if (!db.open()) {
+                    throw std::runtime_error("failed to open border cache");
+                }
+
+                db.lock_write();
+                Variant vusers = Variant::create_array(1);
+                vusers[0] = passwd_to_variant(pwd);
+                db.write(vusers);
+                db.unlock();
+                db.close();
+            }
+            else {
+                if (!db.open()) {
+                    throw std::runtime_error("failed to open border cache");
+                }
+
+                db.lock_write();
+                users.append(passwd_to_variant(pwd));
+                db.write(users);
+                db.unlock();
+                db.close();
+            }
         }
-        else {
-            db.open();
-            db.lock_write();
-            users.append(passwd_to_variant(pwd));
-            db.write(users);
-            db.unlock();
-            db.close();
+        catch (std::exception& e) {
+            syslog(LOG_ERR,"failed to update border cache: %s\n",e.what());
+            return NSS_STATUS_UNAVAIL;
         }
     }
 
